@@ -1,0 +1,39 @@
+name: Orion SEO/AEO Weekly Pipeline
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'   # Every Monday at 7am UTC
+  workflow_dispatch:        # Manual trigger from GitHub UI
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Orion SEO/AEO Pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          echo "Running Orion pipeline for $TODAY"
+          claude --dangerously-skip-permissions -p "Run the Orion SEO/AEO pipeline. Today's date is $TODAY. Use the workflow script at .claude-workflow/orion-seo-pipeline.js with args { runDate: '$TODAY' }. Run all 5 agents, create Jira review tickets in the MKTG project (cloud ID: 7830fa63-7783-433f-b6d1-84e8c6995068), and update the Confluence page ID 3420782599."
+
+      - name: Upload pipeline outputs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orion-pipeline-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/weekly_report_*.md
+            output/keyword_brief_*.json
+            output/aeo_monitor_*.json
+            output/ranking_report_*.json
+            output/content_drafts/
+            queue/next_research_seeds.json
+          retention-days: 90

@@ -1,0 +1,15 @@
+# Environment — never commit API keys
+.env
+
+# Pipeline outputs — large, regenerated each run
+output/
+queue/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db

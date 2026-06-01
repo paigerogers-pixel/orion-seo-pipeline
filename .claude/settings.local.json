@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Paige.Rogers\\\\AppData\\\\Local\" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"python|conda|miniforge|anaconda\" })",
+      "Bash(npm --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "WebSearch",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\Paige.Rogers\\\\Desktop\\\\claude codes\\\\output\\\\content_drafts\\\\2026-06-01\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Output \"Directory ready\")",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)",
+      "WebFetch(domain:www.netnethunter.com)",
+      "WebFetch(domain:paretoinvestor.substack.com)",
+      "WebFetch(domain:www.tikr.com)",
+      "WebFetch(domain:www.linkedin.com)",
+      "WebFetch(domain:blog.elearnmarkets.com)",
+      "WebFetch(domain:www.wallstreetzen.com)",
+      "WebFetch(domain:www.bogleheads.org)",
+      "WebFetch(domain:thehiveindex.com)",
+      "PowerShell(if \\(-not \\(Test-Path \"C:\\\\Users\\\\Paige.Rogers\\\\Desktop\\\\claude codes\\\\output\"\\)\\) { New-Item -ItemType Directory -Path \"C:\\\\Users\\\\Paige.Rogers\\\\Desktop\\\\claude codes\\\\output\" -Force })",
+      "Bash(Write-Output \"Directory created\")",
+      "Bash(Test-Path \"C:\\\\Users\\\\Paige.Rogers\\\\Desktop\\\\claude codes\\\\queue\\\\next_research_seeds.json\")",
+      "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__getAccessibleAtlassianResources",
+      "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__getConfluenceSpaces",
+      "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__searchConfluenceUsingCql",
+      "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__updateConfluencePage",
+      "mcp__c3393661-b3f6-45f9-908c-42c0e31f9699__slack_search_channels",
+      "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__getVisibleJiraProjects",
+      "Skill(schedule)",
+      "Skill(schedule:*)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
