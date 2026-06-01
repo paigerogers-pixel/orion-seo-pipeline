@@ -34,7 +34,8 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'Orion SEO/AEO pipeline — fully agentic, no Python required' --body ' *)"
     ]
   }
 }
