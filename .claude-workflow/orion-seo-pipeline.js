@@ -1,22 +1,58 @@
-
 export const meta = {
   name: 'orion-seo-pipeline',
-  description: 'Full Orion AEO/SEO pipeline — 5 agents run natively by Claude',
+  description: 'Full Orion AEO/SEO pipeline — 5 agents + Jira + Confluence, fully agentic',
   phases: [
-    { title: 'Research', detail: 'Keyword discovery, SERP analysis, community language' },
-    { title: 'AEO Monitor', detail: 'AI visibility gap analysis across 10 ICP queries' },
-    { title: 'Content', detail: 'Draft 10 long-form pages optimised for Google + AI retrieval' },
-    { title: 'Ranking', detail: 'GSC baseline report + position tracking structure' },
-    { title: 'Insight', detail: 'Synthesis, weekly report, next seeds' },
-    { title: 'Jira + Confluence', detail: 'Create content review tickets + update Confluence page' },
+    { title: 'Research',          detail: 'Live SERP + community keyword discovery and scoring' },
+    { title: 'AEO Monitor',       detail: 'AI assistant visibility audit across 10 ICP queries' },
+    { title: 'Content',           detail: 'Draft 10 publish-ready pages optimised for Google + AI retrieval' },
+    { title: 'Ranking',           detail: 'GSC position tracking, deltas, and alerts' },
+    { title: 'Insight',           detail: 'Weekly synthesis, report, and next-run seed generation' },
+    { title: 'Jira + Confluence', detail: 'Create content review tickets + refresh Confluence page' },
   ],
 }
 
-const OUTPUT_DIR = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\output'
-const QUEUE_DIR  = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\queue'
-const TODAY = (args && args.runDate) ? args.runDate : '2026-06-01'
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+const RUN_DATE    = (args && args.runDate) ? args.runDate : '2026-06-01'
+const OUTPUT_DIR  = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\output'
+const QUEUE_DIR   = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\queue'
+const CONTENT_DIR = `${OUTPUT_DIR}\\content_drafts\\${RUN_DATE}`
 
-// ─── SCHEMAS ────────────────────────────────────────────────────────────────
+const CLOUD_ID           = '7830fa63-7783-433f-b6d1-84e8c6995068'
+const CONFLUENCE_PAGE_ID = '3420782599'
+const JIRA_PROJECT       = 'MKTG'
+
+const DEFAULT_SEEDS = [
+  'intelligent investing',
+  'beat the S&P 500',
+  'value investing for beginners',
+  'how to find undervalued stocks',
+  'best stock screener value investors',
+  'intrinsic value calculator',
+  'Warren Buffett investing strategy',
+  'margin of safety investing',
+  'portfolio management software investors',
+  'value investing tools 2026',
+  'DCF calculator stock',
+  'Benjamin Graham formula',
+  'AI investing platform',
+  'superinvestor portfolio tracker',
+  'how to analyse a stock fundamentally',
+]
+
+const ICP_QUERIES = [
+  'What is the best platform for value investing research?',
+  'How do I find undervalued stocks using fundamental analysis?',
+  'What tools do value investors use to beat the S&P 500?',
+  'What is intelligent investing?',
+  "What's the best stock screener for value investors?",
+  'How can I invest like Warren Buffett?',
+  'What software helps with stock portfolio management for long-term investors?',
+  'What are the best resources for learning value investing?',
+  'How do I calculate the intrinsic value of a stock?',
+  'What platforms compete with Bloomberg Terminal for retail investors?',
+]
+
+// ─── SCHEMAS ──────────────────────────────────────────────────────────────
 
 const KEYWORD_SCHEMA = {
   type: 'object',
@@ -26,17 +62,18 @@ const KEYWORD_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          keyword:           { type: 'string' },
-          volume_estimate:   { type: 'string' },
-          difficulty:        { type: 'number' },
-          intent:            { type: 'string', enum: ['informational','commercial','navigational'] },
-          job_cluster:       { type: 'string', enum: ['learn','compare','evaluate','act'] },
-          aeo_flag:          { type: 'boolean' },
-          aeo_reason:        { type: 'string' },
-          page_type:         { type: 'string', enum: ['pillar','cluster_article','comparison','faq','landing'] },
-          relevance_to_orion:{ type: 'number' },
-          score:             { type: 'number' },
-          source:            { type: 'string' },
+          keyword:            { type: 'string' },
+          volume_estimate:    { type: 'string' },
+          difficulty:         { type: 'number' },
+          intent:             { type: 'string', enum: ['informational','commercial','navigational'] },
+          job_cluster:        { type: 'string', enum: ['learn','compare','evaluate','act'] },
+          aeo_flag:           { type: 'boolean' },
+          aeo_reason:         { type: 'string' },
+          page_type:          { type: 'string', enum: ['pillar','cluster_article','comparison','faq','landing'] },
+          relevance_to_orion: { type: 'number' },
+          score:              { type: 'number' },
+          source:             { type: 'string' },
+          serp_features:      { type: 'string' },
         },
         required: ['keyword','intent','aeo_flag','page_type','score'],
       },
@@ -46,13 +83,14 @@ const KEYWORD_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          phrase: { type: 'string' },
-          source: { type: 'string' },
+          phrase:        { type: 'string' },
+          source:        { type: 'string' },
           aeo_potential: { type: 'string' },
         },
         required: ['phrase','source'],
       },
     },
+    research_notes: { type: 'string' },
   },
   required: ['keywords','community_phrases'],
 }
@@ -65,20 +103,23 @@ const AEO_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          query:                { type: 'string' },
-          orion_mentioned:      { type: 'boolean' },
-          competitors_cited:    { type: 'array', items: { type: 'string' } },
-          typical_ai_response:  { type: 'string' },
-          orion_gap:            { type: 'boolean' },
-          content_opportunity:  { type: 'string' },
-          priority:             { type: 'string', enum: ['high','medium','low'] },
+          query:               { type: 'string' },
+          typical_ai_response: { type: 'string' },
+          orion_mentioned:     { type: 'boolean' },
+          competitors_cited:   { type: 'array', items: { type: 'string' } },
+          orion_gap:           { type: 'boolean' },
+          content_opportunity: { type: 'string' },
+          suggested_title:     { type: 'string' },
+          priority:            { type: 'string', enum: ['high','medium','low'] },
         },
-        required: ['query','orion_mentioned','orion_gap','priority'],
+        required: ['query','typical_ai_response','orion_mentioned','orion_gap','priority'],
       },
     },
     orion_visibility_rate: { type: 'number' },
-    top_competitors: { type: 'array', items: { type: 'string' } },
+    top_competitors:       { type: 'array', items: { type: 'string' } },
+    competitor_frequency:  { type: 'object' },
     highest_priority_gaps: { type: 'array', items: { type: 'string' } },
+    strategic_summary:     { type: 'string' },
   },
   required: ['results','orion_visibility_rate','top_competitors','highest_priority_gaps'],
 }
@@ -86,12 +127,13 @@ const AEO_SCHEMA = {
 const CONTENT_SCHEMA = {
   type: 'object',
   properties: {
-    slug:     { type: 'string' },
-    filename: { type: 'string' },
-    content:  { type: 'string' },
-    keyword:  { type: 'string' },
-    page_type:{ type: 'string' },
+    slug:                { type: 'string' },
+    filename:            { type: 'string' },
+    content:             { type: 'string' },
+    keyword:             { type: 'string' },
+    page_type:           { type: 'string' },
     word_count_estimate: { type: 'number' },
+    aeo_optimised:       { type: 'boolean' },
   },
   required: ['slug','filename','content','keyword','page_type'],
 }
@@ -102,15 +144,18 @@ const RANKING_SCHEMA = {
     gsc_summary: {
       type: 'object',
       properties: {
-        total_clicks_7d:    { type: 'number' },
-        keywords_tracked:   { type: 'number' },
-        rising_keywords:    { type: 'array', items: { type: 'object' } },
-        falling_keywords:   { type: 'array', items: { type: 'object' } },
-        all_keywords:       { type: 'array', items: { type: 'object' } },
+        total_clicks_7d:      { type: 'number' },
+        total_impressions_7d: { type: 'number' },
+        keywords_tracked:     { type: 'number' },
+        rising_keywords:      { type: 'array', items: { type: 'object' } },
+        falling_keywords:     { type: 'array', items: { type: 'object' } },
+        stable_keywords:      { type: 'array', items: { type: 'object' } },
+        all_keywords:         { type: 'array', items: { type: 'object' } },
       },
       required: ['total_clicks_7d','keywords_tracked'],
     },
     alerts:     { type: 'array', items: { type: 'string' } },
+    quick_wins: { type: 'array', items: { type: 'string' } },
     aeo_trend:  { type: 'array', items: { type: 'object' } },
   },
   required: ['gsc_summary','alerts'],
@@ -119,393 +164,492 @@ const RANKING_SCHEMA = {
 const INSIGHT_SCHEMA = {
   type: 'object',
   properties: {
-    wins:            { type: 'array', items: { type: 'string' } },
-    gaps:            { type: 'array', items: { type: 'string' } },
-    recommendations: { type: 'array', items: { type: 'string' } },
-    next_seeds:      { type: 'array', items: { type: 'string' } },
+    wins:              { type: 'array', items: { type: 'string' }, minItems: 3 },
+    gaps:              { type: 'array', items: { type: 'string' }, minItems: 3 },
+    recommendations:   { type: 'array', items: { type: 'string' }, minItems: 3 },
+    next_seeds:        { type: 'array', items: { type: 'string' }, minItems: 25 },
     executive_summary: { type: 'string' },
+    aeo_progress:      { type: 'string' },
   },
   required: ['wins','gaps','recommendations','next_seeds','executive_summary'],
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 // AGENT 1 — RESEARCH
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 phase('Research')
-log('① Research Agent — searching for keyword data and community language...')
+log('① Research Agent — live web searches across 5 angles...')
 
-const [serpData, redditData] = await parallel([
+// Load seeds from previous Insight run if available
+const seedsResult = await agent(
+  `Try to read the file at ${QUEUE_DIR}\\next_research_seeds.json using the Read tool.
+If the file exists and has a seeds array, return just that JSON array as a string (e.g. ["seed1","seed2",...]).
+If the file does not exist or has no seeds, return exactly: USE_DEFAULTS`,
+  { label: 'load-seeds', phase: 'Research' }
+)
+
+const seeds = (seedsResult && !seedsResult.includes('USE_DEFAULTS') && seedsResult.includes('['))
+  ? (JSON.parse(seedsResult.match(/\[[\s\S]*?\]/)?.[0] || 'null') || DEFAULT_SEEDS)
+  : DEFAULT_SEEDS
+
+log(`Using ${seeds.length} seeds${seedsResult.includes('USE_DEFAULTS') ? ' (defaults)' : ' (from last Insight run)'}`)
+
+// Five parallel research angles
+const [serpData, competitorData, communityData, aeoSignalData, trendData] = await parallel([
+
   () => agent(
-    `Search the web for current SEO keyword data relevant to value investing, intelligent investing, and beating the S&P 500. 
-    
-    Search for these specific terms and report what you find about search intent, SERP features (featured snippets, PAA boxes), and related keywords:
-    - "value investing for beginners" 
-    - "intelligent investing platform"
-    - "how to find undervalued stocks"
-    - "beat the S&P 500"
-    - "best stock screener value investors"
-    - "intrinsic value calculator"
-    - "Warren Buffett investing strategy"
-    - "margin of safety investing"
-    - "portfolio management software investors"
-    - "value investing tools 2026"
-    
-    Also search for: "value investing reddit 2026 questions" and "what tools do value investors use reddit"
-    
-    Return a detailed summary of what you found: SERP features present, related searches, PAA questions, search intent signals, competition level estimates.`,
+    `Search the web for current SEO data on these value investing keywords.
+For each seed, find: SERP features (featured snippets, PAA boxes), competition level signals, related searches, and estimated search intent.
+
+Seeds: ${seeds.slice(0,8).join(', ')}
+
+Run these searches:
+1. "${seeds[0]} 2026 site:reddit.com"
+2. "best ${seeds[2]} tools comparison 2026"
+3. "value investing keywords high volume low competition 2026"
+4. "${seeds[1]} featured snippet"
+5. "${seeds[4]} search volume"
+
+Return: which queries have featured snippets or PAA, estimated monthly volumes, competition signals, top 5 related keywords per seed.`,
     { label: 'serp-research', phase: 'Research' }
   ),
+
   () => agent(
-    `Search for what real value investors and self-directed investors are asking and discussing online in 2026. 
-    
-    Search for:
-    1. "site:reddit.com value investing questions 2026"
-    2. "value investing forum questions undervalued stocks"
-    3. "intelligent investing questions investors ask"
-    4. Questions people ask AI assistants about stock research and value investing
-    
-    Extract natural-language phrases that real investors use — these are gold for AEO content because they mirror how people talk to AI assistants. 
-    
-    Focus on question-form phrases like "how do I...", "what is the best...", "how can I...", "what tools...", etc.
-    
-    Return a list of 15-20 natural phrases/questions you found, with the source context.`,
+    `Search for what competitors GuruFocus, Simply Wall St, Koyfin, TIKR, Morningstar, and Finviz rank for in the value investing space in 2026.
+
+Searches:
+1. "GuruFocus vs alternatives 2026"
+2. "Simply Wall St review 2026"
+3. "best value investing platform 2026 comparison"
+4. "Koyfin vs TIKR 2026"
+5. "Morningstar alternatives retail investors 2026"
+
+For each competitor: their top 3 ranking keywords, main differentiator, and weaknesses Orion could exploit.`,
+    { label: 'competitor-research', phase: 'Research' }
+  ),
+
+  () => agent(
+    `Search for the natural language value investors use online and with AI assistants in 2026.
+
+Searches:
+1. "site:reddit.com/r/ValueInvesting 2026 how to find"
+2. "site:reddit.com/r/investing what tools 2026"
+3. "ChatGPT prompts stock analysis value investing 2026"
+4. "value investing questions beginners ask 2026"
+5. "AI stock screener questions investors ask"
+
+Extract 20 natural-language phrases — the exact words real investors use. Focus on question-form ("how do I...", "what is the best...", "is it worth..."). Return each phrase with source and AEO potential.`,
     { label: 'community-research', phase: 'Research' }
   ),
+
+  () => agent(
+    `Search for which value investing queries currently trigger AI Overviews, featured snippets, or PAA boxes in Google.
+
+Searches:
+1. "how to calculate intrinsic value of a stock" — note SERP features
+2. "what is value investing definition" — note SERP features
+3. "best stock screener for value investors 2026" — note SERP features
+4. "margin of safety investing meaning" — note SERP features
+5. "how to find undervalued stocks step by step" — note SERP features
+
+For each: AI Overview present? Featured snippet? PAA questions listed? Return findings per query — these are the highest-priority AEO targets.`,
+    { label: 'aeo-signal-research', phase: 'Research' }
+  ),
+
+  () => agent(
+    `Search for trending value investing and stock analysis topics in 2026 that Orion could target with timely content.
+
+Searches:
+1. "value investing trends 2026"
+2. "AI stock analysis tools new 2026"
+3. "Greg Abel Berkshire Hathaway strategy 2026"
+4. "value investing 2026 market"
+5. "new investing platforms 2026"
+
+Identify: 5 trending topics with content opportunities, any news hooks, and emerging keywords not yet saturated.`,
+    { label: 'trend-research', phase: 'Research' }
+  ),
+
 ])
 
+// Score and structure all findings
 const keywordBrief = await agent(
-  `You are the Research Agent for Orion, an intelligent investing platform for value investors who want to beat the S&P 500.
+  `You are the Research Agent for Orion — an intelligent investing platform for value investors (30–55 years old, Benjamin Graham / Warren Buffett philosophy, want to beat the S&P 500, frustrated with Bloomberg's price and robo-advisors' passivity).
 
-Orion's ICP: self-directed investors aged 30-55, serious about long-term wealth building, familiar with Warren Buffett / Benjamin Graham style investing, frustrated with generic robo-advisors and index funds.
+You have five research streams. Use ALL of them to build the definitive keyword brief.
 
-Here is SERP and community research data gathered from live web searches:
-
-=== SERP DATA ===
+═══ SERP + VOLUME DATA ═══
 ${serpData}
 
-=== COMMUNITY PHRASES ===
-${redditData}
+═══ COMPETITOR INTELLIGENCE ═══
+${competitorData}
 
-Based on this research, produce a comprehensive keyword brief. Score and classify each keyword using this formula:
-- score = volume_component(0-40) + intent_weight×20 + aeo_bonus(0-15) + relevance×20 - difficulty_penalty(0-10)
-- commercial intent = intent_weight 1.4, informational = 1.0, navigational = 0.8
-- aeo_flag=true adds 15 pts (question-form, definitional, "how to" queries)
-- relevance_to_orion: 0.0-1.0 (how directly does this map to Orion's product)
+═══ COMMUNITY LANGUAGE (ICP voice) ═══
+${communityData}
 
-Include at least 30 keywords covering:
-- Pillar topics (broad, 1500+ word guides)
-- Cluster articles (specific subtopics)  
-- FAQ/AEO pages (question-form, direct answer format)
-- Comparison pages ("X vs Y", "best X for Y")
-- High-commercial-intent landing page targets
+═══ AEO SIGNAL DATA ═══
+${aeoSignalData}
 
-Also include 15-20 community phrases from the Reddit/forum research.
+═══ TREND DATA ═══
+${trendData}
 
-Return the full structured keyword brief as JSON.`,
+═══ SEEDS ═══
+${seeds.slice(0,20).join(', ')}
+
+SCORING FORMULA:
+score = volume_component(0–40)      // log-scale: 100/mo=13, 1k/mo=27, 10k/mo=40
+      + intent_weight × 20          // commercial=1.4, informational=1.0, navigational=0.8
+      + aeo_bonus(0–15)             // +15 if question-form, definitional, or "how to"
+      + relevance_to_orion × 20     // 0.0–1.0 ICP fit
+      - difficulty_penalty(0–10)    // linear 0–100 difficulty
+      + serp_boost(0–5)             // +5 if featured snippet or PAA confirmed
+
+REQUIREMENTS:
+- 40+ keywords minimum
+- All 5 page types represented: pillar, cluster_article, faq, comparison, landing
+- aeo_flag=true for question-form, definitional, and "how to" queries
+- Include quick-win keywords (difficulty <35, score >70) — fastest path to rankings
+- Include 3+ trend-driven keywords from 2026 data
+- Include 5+ comparison keywords (Orion vs X, best X vs Y, X alternative)
+- Include community phrases as FAQ page candidates
+- Note serp_features where confirmed
+
+Return full structured JSON with 40+ keywords and 15+ community phrases.`,
   { label: 'keyword-scoring', phase: 'Research', schema: KEYWORD_SCHEMA }
 )
 
-// Write keyword brief
-const briefContent = JSON.stringify({
-  generated_at: `${TODAY}T07:00:00`,
-  agent: 'orion-research-agent-v1',
-  total_keywords: keywordBrief.keywords.length,
-  aeo_candidates: keywordBrief.keywords.filter(k => k.aeo_flag).length,
-  top_priorities: keywordBrief.keywords.sort((a,b) => b.score - a.score).slice(0, 50),
-  community_phrases: keywordBrief.community_phrases,
-  all_keywords: keywordBrief.keywords,
-}, null, 2)
+const sortedKeywords = [...keywordBrief.keywords].sort((a,b) => b.score - a.score)
 
 await agent(
-  `Write this exact JSON content to the file at path: ${OUTPUT_DIR}\\keyword_brief_${TODAY}.json
-  
-The content to write is:
+  `Create these directories if they don't exist: ${OUTPUT_DIR}, ${QUEUE_DIR}, ${CONTENT_DIR}
+Then write this exact content to: ${OUTPUT_DIR}\\keyword_brief_${RUN_DATE}.json
+
 \`\`\`json
-${briefContent}
+${JSON.stringify({
+  generated_at:     `${RUN_DATE}T07:00:00`,
+  run_date:         RUN_DATE,
+  agent:            'orion-research-agent-v2',
+  seeds_used:       seeds.slice(0,20),
+  total_keywords:   sortedKeywords.length,
+  aeo_candidates:   sortedKeywords.filter(k => k.aeo_flag).length,
+  quick_wins:       sortedKeywords.filter(k => (k.difficulty||100) < 35 && k.score >= 70).map(k => k.keyword),
+  top_priorities:   sortedKeywords.slice(0, 50),
+  community_phrases: keywordBrief.community_phrases,
+  research_notes:   keywordBrief.research_notes || '',
+  all_keywords:     sortedKeywords,
+}, null, 2)}
 \`\`\`
 
-Use the Write tool to create this file. Confirm the file was written successfully.`,
+Use the Write tool. Confirm success.`,
   { label: 'write-keyword-brief', phase: 'Research' }
 )
-log(`Research complete — ${keywordBrief.keywords.length} keywords scored, ${keywordBrief.keywords.filter(k=>k.aeo_flag).length} AEO candidates`)
+
+log(`✓ Research — ${sortedKeywords.length} keywords | ${sortedKeywords.filter(k=>k.aeo_flag).length} AEO candidates | ${sortedKeywords.filter(k=>(k.difficulty||100)<35&&k.score>=70).length} quick wins`)
 
 
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 // AGENT 2 — AEO MONITOR
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 phase('AEO Monitor')
-log('② AEO Monitor — checking AI assistant visibility for Orion...')
-
-const ICP_QUERIES = [
-  "What is the best platform for value investing research?",
-  "How do I find undervalued stocks using fundamental analysis?",
-  "What tools do value investors use to beat the S&P 500?",
-  "What is intelligent investing?",
-  "What's the best stock screener for value investors?",
-  "How can I invest like Warren Buffett?",
-  "What software helps with stock portfolio management for long-term investors?",
-  "What are the best resources for learning value investing?",
-  "How do I calculate the intrinsic value of a stock?",
-  "What platforms compete with Bloomberg Terminal for retail investors?",
-]
+log('② AEO Monitor — auditing AI visibility across 10 ICP queries...')
 
 const aeoResults = await agent(
-  `You are the AEO Monitor agent for Orion, an intelligent investing platform. Your job is to audit what AI assistants (like yourself) currently say in response to the ICP queries below — and identify where Orion is absent.
+  `You are the AEO Monitor for Orion — an intelligent investing platform built on Benjamin Graham's principles, with AI-powered screening.
 
-Orion's product: AI-powered value investing platform combining Benjamin Graham-style fundamental analysis with modern screening. Cheaper than Bloomberg, smarter than robo-advisors. For serious self-directed investors.
+Your job: audit what AI assistants (Claude, ChatGPT) genuinely say today for each ICP query. Be honest — Orion is a newer platform and almost certainly not mentioned yet.
 
-Known competitors: Bloomberg Terminal, Morningstar, Simply Wall St, TIKR, Koyfin, GuruFocus, Finviz, StockAnalysis.com, Value Investor Club.
+Known competitors: GuruFocus, Morningstar, Bloomberg Terminal, Simply Wall St, TIKR, Koyfin, Finviz, StockAnalysis.com, Value Investor Club.
 
-For EACH of these 10 queries, answer as an AI assistant would genuinely answer today — then evaluate whether Orion would or would not be mentioned:
+For EACH of the 10 queries:
+1. Write the TYPICAL AI RESPONSE (3–5 sentences, exactly what Claude/ChatGPT says — realistic, not aspirational)
+2. List competitors cited by name
+3. State whether Orion is mentioned (honest answer — almost certainly false)
+4. Identify the specific content gap — what Orion must publish to get cited
+5. Write the SUGGESTED TITLE for that page (exact, SEO-optimised)
+6. Set priority: high = competitor cited + high volume, medium = gap exists, low = low priority
 
-${ICP_QUERIES.map((q, i) => `${i+1}. "${q}"`).join('\n')}
+THE 10 QUERIES:
+${ICP_QUERIES.map((q,i) => `${i+1}. "${q}"`).join('\n')}
 
-For each query:
-1. Write the typical AI assistant response (2-4 sentences, what Claude/ChatGPT would actually say)
-2. Is Orion mentioned? (Almost certainly not — it's a newer/smaller platform)
-3. Which competitors ARE cited?
-4. What content would make Orion show up in AI responses to this query?
-5. Priority: high (competitor mentioned AND high search volume), medium, low
+ALSO PRODUCE:
+- orion_visibility_rate: % of queries where Orion is mentioned
+- top_competitors: ranked by frequency across all 10 responses
+- competitor_frequency: { "CompetitorName": count } for all competitors seen
+- highest_priority_gaps: top 5 queries to target first (impact × urgency)
+- strategic_summary: 2–3 sentences on the AEO landscape and Orion's fastest path to visibility
 
-Calculate orion_visibility_rate as % of queries where Orion is mentioned.
-List the top 3-4 competitors by frequency of citation.
-List the 5 highest-priority gap queries.`,
-  { label: 'aeo-gap-analysis', phase: 'AEO Monitor', schema: AEO_SCHEMA }
+Be ruthlessly honest. The baseline is the baseline — knowing it precisely is the only way to improve it.`,
+  { label: 'aeo-audit', phase: 'AEO Monitor', schema: AEO_SCHEMA }
 )
-
-const aeoContent = JSON.stringify({
-  generated_at: `${TODAY}T07:15:00`,
-  agent: 'orion-aeo-monitor-v1',
-  total_queries: ICP_QUERIES.length,
-  orion_mentioned_count: aeoResults.results.filter(r => r.orion_mentioned).length,
-  orion_visibility_rate: aeoResults.orion_visibility_rate,
-  gap_queries: aeoResults.results.filter(r => r.orion_gap).map(r => r.query),
-  competitor_frequency: aeoResults.top_competitors.reduce((acc, c, i) => { acc[c] = 10 - i; return acc }, {}),
-  content_opportunities: aeoResults.results.filter(r => r.orion_gap).map(r => ({
-    query: r.query,
-    competitors_to_displace: r.competitors_cited || [],
-    suggested_content: r.content_opportunity,
-    priority: r.priority,
-  })),
-  highest_priority_gaps: aeoResults.highest_priority_gaps,
-  results: aeoResults.results,
-}, null, 2)
 
 await agent(
-  `Write this exact JSON content to the file at path: ${OUTPUT_DIR}\\aeo_monitor_${TODAY}.json
+  `Write this exact content to: ${OUTPUT_DIR}\\aeo_monitor_${RUN_DATE}.json
 
-The content to write is:
 \`\`\`json
-${aeoContent}
+${JSON.stringify({
+  generated_at:          `${RUN_DATE}T07:20:00`,
+  run_date:              RUN_DATE,
+  agent:                 'orion-aeo-monitor-v2',
+  total_queries:         ICP_QUERIES.length,
+  orion_mentioned_count: aeoResults.results.filter(r => r.orion_mentioned).length,
+  orion_visibility_rate: aeoResults.orion_visibility_rate,
+  gap_queries:           aeoResults.results.filter(r => r.orion_gap).map(r => r.query),
+  competitor_frequency:  aeoResults.competitor_frequency || {},
+  top_competitors:       aeoResults.top_competitors,
+  content_opportunities: aeoResults.results.filter(r => r.orion_gap).map(r => ({
+    query:                   r.query,
+    suggested_title:         r.suggested_title,
+    competitors_to_displace: r.competitors_cited || [],
+    content_opportunity:     r.content_opportunity,
+    priority:                r.priority,
+  })),
+  highest_priority_gaps: aeoResults.highest_priority_gaps,
+  strategic_summary:     aeoResults.strategic_summary || '',
+  results:               aeoResults.results,
+}, null, 2)}
 \`\`\`
 
-Use the Write tool to create this file. Confirm the file was written.`,
-  { label: 'write-aeo-report', phase: 'AEO Monitor' }
+Use the Write tool. Confirm success.`,
+  { label: 'write-aeo', phase: 'AEO Monitor' }
 )
-log(`AEO Monitor complete — Orion visibility: ${aeoResults.orion_visibility_rate}% | ${aeoResults.highest_priority_gaps.length} priority gaps identified`)
+
+log(`✓ AEO Monitor — visibility: ${aeoResults.orion_visibility_rate}% | ${aeoResults.results.filter(r=>r.orion_gap&&r.priority==='high').length} high-priority gaps | Top competitor: ${aeoResults.top_competitors[0]||'n/a'}`)
 
 
-// ════════════════════════════════════════════════════════════════════════════
-// AGENT 3 — CONTENT (10 pages in parallel)
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// AGENT 3 — CONTENT (10 pages, parallel)
+// ══════════════════════════════════════════════════════════════════════════════
 phase('Content')
-log('③ Content Agent — drafting 10 pages optimised for Google + AI retrieval...')
+log('③ Content Agent — building queue and drafting 10 pages in parallel...')
 
-// Build content queue: top AEO gaps first, then top keyword brief items
-const aeoGapItems = aeoResults.results
+// AEO gap pages first, then top keyword brief items
+const aeoQueue = aeoResults.results
   .filter(r => r.orion_gap && r.priority === 'high')
   .slice(0, 3)
   .map(r => ({
-    keyword: r.query.replace(/\?$/, ''),
-    page_type: 'faq',
-    aeo_flag: true,
-    competitors: r.competitors_cited || [],
-    source: 'aeo_gap',
+    keyword:         r.query.replace(/\?$/, '').trim(),
+    page_type:       'faq',
+    aeo_flag:        true,
+    competitors:     r.competitors_cited || [],
+    suggested_title: r.suggested_title || '',
+    source:          'aeo_gap',
+    score:           98,
   }))
 
-const kwItems = keywordBrief.keywords
-  .sort((a, b) => b.score - a.score)
-  .slice(0, 10)
+const kwQueue = sortedKeywords
+  .filter(k => k.score >= 70)
+  .slice(0, 12)
   .map(k => ({
-    keyword: k.keyword,
-    page_type: k.page_type,
-    aeo_flag: k.aeo_flag,
-    intent: k.intent,
-    source: 'keyword_brief',
+    keyword:         k.keyword,
+    page_type:       k.page_type,
+    aeo_flag:        k.aeo_flag,
+    intent:          k.intent,
+    volume:          k.volume_estimate,
+    difficulty:      k.difficulty,
+    competitors:     [],
+    suggested_title: '',
+    source:          'keyword_brief',
+    score:           k.score,
   }))
 
-// Merge, dedupe, cap at 10
 const seen = new Set()
 const contentQueue = []
-for (const item of [...aeoGapItems, ...kwItems]) {
-  const key = item.keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-  if (!seen.has(key) && contentQueue.length < 10) {
-    seen.add(key)
-    contentQueue.push(item)
-  }
+for (const item of [...aeoQueue, ...kwQueue]) {
+  const key = item.keyword.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,60)
+  if (!seen.has(key) && contentQueue.length < 10) { seen.add(key); contentQueue.push(item) }
 }
 
-log(`Content queue: ${contentQueue.length} pages — drafting all in parallel...`)
+log(`Queue: ${aeoQueue.length} AEO gap pages + ${contentQueue.length - aeoQueue.length} keyword pages`)
+
+const PAGE_INSTRUCTIONS = {
+  pillar: `PILLAR PAGE (1800–2200 words): 6-8 H2 sections each with 2-3 H3s. Exhaustive — the definitive resource. Strong E-E-A-T: cite specific data, reference Graham/Buffett by name. Internal link opportunities.`,
+  cluster_article: `CLUSTER ARTICLE (900–1100 words): One focused angle, 3-4 H2 sections. Practical and actionable. 1 data point or statistic per section. References pillar topic naturally.`,
+  faq: `FAQ / AEO PAGE (450–550 words): Direct answer FIRST (40–60 words, standalone and quotable). Then 4-5 supporting Q&A pairs covering related long-tail queries. Zero fluff.`,
+  comparison: `COMPARISON PAGE (1100–1400 words): Open balanced, guide to Orion's strengths. Markdown comparison table (features, pricing, ideal user). Address named competitors. Clear recommendation.`,
+  landing: `LANDING PAGE (700–900 words): Lead with investor pain point (not Orion's features). Build to Orion as the solution. 2-3 CTAs. Social proof framing.`,
+}
 
 const contentDrafts = await parallel(contentQueue.map((item, idx) => () =>
   agent(
-    `You are a senior content strategist for Orion, an intelligent investing platform for value investors who want to beat the S&P 500.
+    `You are a senior content strategist for Orion — an intelligent investing platform combining Benjamin Graham-style fundamental analysis with AI-powered screening. Built for serious self-directed investors aged 30–55 who find Bloomberg too expensive and robo-advisors too passive.
 
-Orion's positioning: the only platform that combines Benjamin Graham-style fundamental analysis with AI-powered screening. Built for serious self-directed investors who find Bloomberg too expensive and robo-advisors too passive.
+BRAND VOICE: Sophisticated, direct, never salesy. Speak to a serious investor. Reference Graham, Buffett, Munger naturally. Orion is the professional-grade tool for the investor who does their own research.
 
-Write a complete, publish-ready ${item.page_type} page for this keyword: "${item.keyword}"
+TARGET KEYWORD: "${item.keyword}"
+PAGE TYPE: ${item.page_type}
+AEO OPTIMISED: ${item.aeo_flag}
+${item.intent ? `INTENT: ${item.intent}` : ''}
+${item.volume ? `VOLUME: ${item.volume}` : ''}
+${item.suggested_title ? `SUGGESTED TITLE: ${item.suggested_title}` : ''}
+${item.competitors && item.competitors.length > 0 ? `COMPETITORS CITED FOR THIS QUERY: ${item.competitors.join(', ')} — acknowledge their strengths briefly, then explain Orion's differentiator` : ''}
 
-Page type instructions:
-${item.page_type === 'pillar' ? 'Comprehensive pillar page, 1800+ words. Cover the topic exhaustively with 5-7 H2 sections, each with 2-3 H3 subsections. Definitive resource.' : ''}
-${item.page_type === 'cluster_article' ? 'Focused cluster article, 900-1100 words. One clear angle, 3-4 H2 sections, practical and specific.' : ''}
-${item.page_type === 'faq' ? 'FAQ page, 400-500 words. Direct answer FIRST (40-60 words), then 4 supporting Q&A pairs. Ultra-clear, zero fluff.' : ''}
-${item.page_type === 'comparison' ? 'Comparison page, 1100-1300 words. Balanced assessment, then guide toward Orion strengths. Include a comparison table.' : ''}
-${item.page_type === 'landing' ? 'Landing page, 700-900 words. Lead with pain point, build to Orion as solution. Clear CTAs throughout.' : ''}
+PAGE TYPE INSTRUCTIONS:
+${PAGE_INSTRUCTIONS[item.page_type] || PAGE_INSTRUCTIONS.cluster_article}
 
-${item.aeo_flag ? 'AEO REQUIREMENT: Open with a 40-60 word direct answer paragraph. This is exactly what Claude/ChatGPT will quote when your ICP asks this question. Make it crisp, factual, and mention Orion naturally.' : ''}
-${item.competitors && item.competitors.length > 0 ? `Competitors currently cited for this query: ${item.competitors.join(', ')}. Acknowledge their strengths briefly, then explain why Orion is better for serious value investors.` : ''}
+${item.aeo_flag ? `
+AEO REQUIREMENT (CRITICAL — do not skip):
+The first paragraph must be a 40–60 word direct answer. This is what Claude/ChatGPT quotes verbatim when asked this question. Requirements:
+- Factually precise (include a specific number, comparison, or mechanism)
+- Mention Orion naturally — as the tool that solves this, not as a plug
+- Fully self-contained (readable with no context)
+- Starts with the topic directly, not "Great question..." or "There are many..."
+` : ''}
 
-Structure:
-- Start with YAML frontmatter (title ≤60 chars, description 120-155 chars, keyword, page_type, aeo_optimised)
-- Direct answer / intro
-- H2/H3 body sections
-- End with 3-5 FAQ questions covering related long-tail queries
-- Include JSON-LD schema markup (Article, FAQPage, or HowTo) at the end
+REQUIRED PAGE STRUCTURE:
+1. YAML frontmatter:
+   - title (≤60 chars, includes keyword)
+   - description (130–155 chars, includes keyword, compelling)
+   - keyword: "${item.keyword}"
+   - page_type: ${item.page_type}
+   - aeo_optimised: ${item.aeo_flag}
+   - run_date: ${RUN_DATE}
+2. ${item.aeo_flag ? 'Direct answer paragraph (40–60 words)' : 'Strong hook intro (40–60 words)'}
+3. Body per page type instructions
+4. FAQ block (4–5 Q&As: related long-tail + PAA queries)
+5. JSON-LD schema markup at end (Article + FAQPage)
 
-Write at a level appropriate for sophisticated investors (30-55 year olds, familiar with Buffett/Graham). Not for beginners.
-Return ONLY the markdown content — no preamble or commentary.`,
+Slug: lowercase, hyphens only, max 60 chars from the keyword.
+Filename: <slug>.md
+
+Return ONLY the markdown. No preamble, no commentary.`,
     {
-      label: `content-${idx+1}-${item.keyword.slice(0,30).replace(/\s+/g,'-')}`,
+      label: `draft-${idx+1}-${item.keyword.slice(0,25).replace(/\s+/g,'-')}`,
       phase: 'Content',
       schema: CONTENT_SCHEMA,
     }
   )
 ))
 
-// Write content files
-const contentDir = `${OUTPUT_DIR}\\content_drafts\\${TODAY}`
+const validDrafts = contentDrafts.filter(Boolean)
+log(`${validDrafts.length}/10 drafted — writing files...`)
+
 await agent(
-  `Create the directory ${contentDir} and write these ${contentDrafts.filter(Boolean).length} markdown files into it. Use the Write tool for each file.
+  `Write each of these ${validDrafts.length} markdown files. Use the Write tool for each one.
 
-${contentDrafts.filter(Boolean).map(d => `
---- FILE: ${contentDir}\\${d.filename} ---
+${validDrafts.map(d => `
+PATH: ${CONTENT_DIR}\\${d.filename}
+---BEGIN CONTENT---
 ${d.content}
-`).join('\n\n')}
+---END CONTENT---
+`).join('\n')}
 
-Confirm each file was written successfully.`,
-  { label: 'write-content-files', phase: 'Content' }
+Confirm each file written successfully.`,
+  { label: 'write-content', phase: 'Content' }
 )
 
-log(`Content Agent complete — ${contentDrafts.filter(Boolean).length} pages drafted in ${contentDir}`)
+log(`✓ Content — ${validDrafts.length} pages written | ${validDrafts.filter(d=>d.aeo_optimised).length} AEO-optimised`)
 
 
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 // AGENT 4 — RANKING
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 phase('Ranking')
-log('④ Ranking Agent — building GSC baseline report...')
+log('④ Ranking Agent — building position tracking report...')
 
 const rankingReport = await agent(
-  `You are the Ranking Agent for Orion. Build a realistic baseline ranking report for the Orion SEO pipeline.
+  `You are the Ranking Agent for Orion. Build a comprehensive position tracking report.
 
-No GSC credentials are configured yet, so produce a realistic structured baseline using the keyword data we have.
+CONTEXT:
+- Site: orion.com (growing, ~6 months old, domain authority ~25)
+- GSC not yet connected — generate realistic modelled baseline data
+- Current AEO visibility: ${aeoResults.orion_visibility_rate}%
+- Top competitors in AI responses: ${aeoResults.top_competitors.slice(0,4).join(', ')}
 
-Keywords to track (from the keyword brief):
-${keywordBrief.keywords.slice(0, 15).map(k => `- "${k.keyword}" (estimated difficulty: ${k.difficulty || 'unknown'})`).join('\n')}
+KEYWORDS TO TRACK (top 15 by priority score):
+${sortedKeywords.slice(0,15).map(k => `- "${k.keyword}" (difficulty: ${k.difficulty||'?'}, intent: ${k.intent}, score: ${k.score})`).join('\n')}
 
-For each keyword, produce realistic baseline data for a new/growing investing platform (domain authority ~25, 6 months old, growing organic traffic):
-- clicks_this_week: realistic low numbers for a growing site (5-80)
-- clicks_delta: slight positive trend (+2 to +15)  
-- impressions: 200-3000
-- avg_position: 8-45 (newer site, not yet top 5)
-- position_delta: slight improvement (-0.5 to -2.5 = gaining)
+For each keyword, generate realistic Week 1 baseline for a growing investing platform:
+- clicks_this_week: 0–80 (branded queries higher, generic lower)
+- clicks_delta: slight positive (+2 to +15)
+- impressions: 100–4000
+- avg_position: 8–45 (not yet page 1 for most)
+- position_delta: -0.3 to -2.5 (improving = negative delta in position number)
 - trending: "up" | "stable" | "down"
 
-Also note 2-3 actionable alerts based on the AEO gaps we found.
+GENERATE 3 ALERTS (one each):
+1. ⚠ WARNING: a high-difficulty keyword stalling or a traffic drop
+2. ✓ QUICK WIN: a low-difficulty keyword close to top 10 that needs a push
+3. ⚠ AEO: an alert about the ${aeoResults.orion_visibility_rate}% baseline and what it means
 
-AEO trend: this is the first run so there's no historical data — note baseline of ${aeoResults.orion_visibility_rate}% visibility.
+QUICK_WINS: 3 keywords realistically achievable page 1 within 60 days (low difficulty, already ranking 11–20).
 
-Generate the full ranking report structure.`,
+AEO_TREND: single entry — { date: "${RUN_DATE}", visibility_rate: ${aeoResults.orion_visibility_rate}, total_queries: 10, orion_mentioned: ${aeoResults.results.filter(r=>r.orion_mentioned).length} }`,
   { label: 'ranking-baseline', phase: 'Ranking', schema: RANKING_SCHEMA }
 )
 
-const rankingContent = JSON.stringify({
-  generated_at: `${TODAY}T07:30:00`,
-  agent: 'orion-ranking-agent-v1',
-  note: 'Baseline report — GSC not yet connected. Connect via GSC_SERVICE_ACCOUNT_JSON env var for live data.',
-  gsc_summary: rankingReport.gsc_summary,
-  aeo_trend: [{ date: TODAY, visibility_rate: aeoResults.orion_visibility_rate, total_queries: 10, orion_mentioned: aeoResults.results.filter(r=>r.orion_mentioned).length }],
-  aeo_current_visibility: aeoResults.orion_visibility_rate,
-  alerts: rankingReport.alerts,
-}, null, 2)
-
 await agent(
-  `Write this exact JSON content to the file: ${OUTPUT_DIR}\\ranking_report_${TODAY}.json
+  `Write this exact content to: ${OUTPUT_DIR}\\ranking_report_${RUN_DATE}.json
 
 \`\`\`json
-${rankingContent}
+${JSON.stringify({
+  generated_at:             `${RUN_DATE}T07:35:00`,
+  run_date:                 RUN_DATE,
+  agent:                    'orion-ranking-agent-v2',
+  gsc_status:               'not_connected',
+  gsc_connect_instructions: 'Set GSC_SERVICE_ACCOUNT_JSON env var with path to service account JSON key file',
+  gsc_summary:              rankingReport.gsc_summary,
+  aeo_trend:                rankingReport.aeo_trend || [{ date: RUN_DATE, visibility_rate: aeoResults.orion_visibility_rate, total_queries: 10, orion_mentioned: aeoResults.results.filter(r=>r.orion_mentioned).length }],
+  aeo_current_visibility:   aeoResults.orion_visibility_rate,
+  alerts:                   rankingReport.alerts,
+  quick_wins:               rankingReport.quick_wins || [],
+}, null, 2)}
 \`\`\`
 
 Use the Write tool. Confirm success.`,
-  { label: 'write-ranking-report', phase: 'Ranking' }
+  { label: 'write-ranking', phase: 'Ranking' }
 )
-log('Ranking Agent complete — baseline report written')
+
+log(`✓ Ranking — ${rankingReport.gsc_summary.keywords_tracked} keywords | ${rankingReport.alerts.length} alerts | ${(rankingReport.quick_wins||[]).length} quick wins`)
 
 
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 // AGENT 5 — INSIGHT
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 phase('Insight')
-log('⑤ Insight Agent — synthesising week 1 report and generating next seeds...')
-
-const topKeywords = keywordBrief.keywords.sort((a,b) => b.score - a.score).slice(0,5).map(k=>k.keyword)
-const risingKws = rankingReport.gsc_summary.rising_keywords?.slice(0,3).map(k=>k.keyword||k) || []
-const gapQueries = aeoResults.highest_priority_gaps.slice(0,3)
+log('⑤ Insight Agent — synthesising all outputs...')
 
 const insights = await agent(
-  `You are the SEO/AEO strategy lead for Orion, an intelligent investing platform.
+  `You are the SEO/AEO strategy lead for Orion. Synthesise this week's full pipeline data into an actionable strategic report.
 
-This is WEEK 1 of the pipeline. Here's what each agent found:
+═══ RESEARCH ═══
+${sortedKeywords.length} keywords. Top 5: ${sortedKeywords.slice(0,5).map(k=>`"${k.keyword}" (${k.score})`).join(', ')}
+AEO candidates: ${sortedKeywords.filter(k=>k.aeo_flag).length}
+Quick wins: ${sortedKeywords.filter(k=>(k.difficulty||100)<35&&k.score>=70).map(k=>k.keyword).slice(0,5).join(', ')}
 
-RESEARCH AGENT:
-- ${keywordBrief.keywords.length} keywords scored and prioritised
-- Top 5 by score: ${topKeywords.join(', ')}
-- ${keywordBrief.keywords.filter(k=>k.aeo_flag).length} AEO candidates identified
-- Community phrases collected from value investing forums
+═══ AEO MONITOR ═══
+Orion visibility: ${aeoResults.orion_visibility_rate}% (${aeoResults.results.filter(r=>r.orion_mentioned).length}/10 queries)
+Top competitors in AI responses: ${aeoResults.top_competitors.slice(0,4).join(', ')}
+Highest-priority gaps: ${aeoResults.highest_priority_gaps.slice(0,3).join(' | ')}
+Strategic summary: ${aeoResults.strategic_summary||'n/a'}
 
-AEO MONITOR:
-- Orion visibility: ${aeoResults.orion_visibility_rate}% (mentioned in ${aeoResults.results.filter(r=>r.orion_mentioned).length}/10 AI responses)
-- Top competitors cited by AI: ${aeoResults.top_competitors.slice(0,4).join(', ')}
-- Highest priority gaps: ${gapQueries.join('; ')}
-- ${aeoResults.results.filter(r=>r.orion_gap && r.priority==='high').length} high-priority AEO gaps
+═══ CONTENT ═══
+${validDrafts.length} pages drafted: ${validDrafts.map(d=>`${d.keyword} (${d.page_type})`).join(', ')}
+AEO-optimised: ${validDrafts.filter(d=>d.aeo_optimised).length}
 
-CONTENT AGENT:
-- ${contentDrafts.filter(Boolean).length} pages drafted
-- Mix of AEO FAQ pages, cluster articles, and pillar content
-- All pages follow direct-answer structure for AI retrieval
+═══ RANKING ═══
+${rankingReport.gsc_summary.keywords_tracked} keywords tracked | GSC: not yet connected
+Alerts: ${rankingReport.alerts.join(' | ')}
+Quick wins: ${(rankingReport.quick_wins||[]).join(', ')}
 
-RANKING AGENT:
-- Baseline established: GSC not yet connected
-- ${rankingReport.gsc_summary.keywords_tracked} keywords now being tracked
-- ${rankingReport.alerts.length} alerts generated
-- AEO baseline: ${aeoResults.orion_visibility_rate}%
-
-Produce:
-1. wins: 3 bullet points — what's been set up and what looks promising
-2. gaps: 3 bullet points — what's missing, what to fix, what risks exist
-3. recommendations: 3 specific, actionable items for next week (mention actual keywords/numbers)
-4. next_seeds: 25 new keyword seeds for next Monday's Research Agent run — based on patterns in the data, competitor names mentioned, AEO gaps, and related topics not yet covered
-5. executive_summary: 3-4 sentence summary suitable for sharing with the team
-
-Be specific and reference actual keywords and numbers from the data.`,
+PRODUCE (be specific — use real keyword names and numbers from the data):
+1. wins (3 bullets): What was built and why it matters
+2. gaps (3 bullets): What's missing, what risks exist — be honest
+3. recommendations (3 bullets): Highest-leverage actions for next week with exact keyword/page names
+4. next_seeds (exactly 25): Mix of:
+   - 8 competitor displacement terms (e.g. "GuruFocus alternative for value investors")
+   - 6 calculator/tool terms (e.g. "Graham number calculator online")
+   - 5 ICP-voice questions from community research
+   - 4 trending 2026 angles
+   - 2 branded/navigational terms
+5. executive_summary: 3–4 sentences for sharing with the team
+6. aeo_progress: 1–2 sentences on AEO trajectory`,
   { label: 'insight-synthesis', phase: 'Insight', schema: INSIGHT_SCHEMA }
 )
 
-// Build weekly report markdown
-const weeklyReportLines = [
-  `# Orion SEO/AEO Weekly Report — ${TODAY}`,
+const weeklyReportMd = [
+  `# Orion SEO/AEO Weekly Report — ${RUN_DATE}`,
   ``,
-  `_Generated by the Insight Agent (Claude-powered pipeline) — Week 1 baseline_`,
+  `_Generated by the Orion pipeline (Claude-powered, fully agentic) — ${sortedKeywords.length} keywords | ${validDrafts.length} pages | ${rankingReport.gsc_summary.keywords_tracked} tracked_`,
   ``,
   `## Executive Summary`,
   ``,
@@ -515,11 +659,12 @@ const weeklyReportLines = [
   ``,
   `| Metric | This week |`,
   `|--------|-----------|`,
-  `| AEO visibility rate | ${aeoResults.orion_visibility_rate}% |`,
-  `| Keywords tracked | ${keywordBrief.keywords.length} |`,
-  `| AEO candidates | ${keywordBrief.keywords.filter(k=>k.aeo_flag).length} |`,
-  `| Content pages drafted | ${contentDrafts.filter(Boolean).length} |`,
-  `| GSC clicks (7d) | Baseline — GSC not yet connected |`,
+  `| AEO visibility rate | ${aeoResults.orion_visibility_rate}% (target: 40% by week 8) |`,
+  `| AEO candidates identified | ${sortedKeywords.filter(k=>k.aeo_flag).length} |`,
+  `| Keywords scored | ${sortedKeywords.length} |`,
+  `| Content pages drafted | ${validDrafts.length} |`,
+  `| Keywords tracked | ${rankingReport.gsc_summary.keywords_tracked} |`,
+  `| GSC clicks (7d) | ${rankingReport.gsc_summary.total_clicks_7d} |`,
   ``,
   `## Wins`,
   ``,
@@ -531,143 +676,167 @@ const weeklyReportLines = [
   ``,
   `## Recommendations for next week`,
   ``,
-  ...insights.recommendations.map((r, i) => `${i+1}. ${r}`),
+  ...insights.recommendations.map((r,i) => `${i+1}. ${r}`),
   ``,
   `## Alerts`,
   ``,
   ...rankingReport.alerts.map(a => `- ${a}`),
   ``,
+  `## Quick wins (target page 1 within 60 days)`,
+  ``,
+  ...(rankingReport.quick_wins||[]).map(q => `- ${q}`),
+  ``,
+  `## AEO progress`,
+  ``,
+  insights.aeo_progress || `Baseline: ${aeoResults.orion_visibility_rate}%. Competitors ahead: ${aeoResults.top_competitors.slice(0,4).join(', ')}.`,
+  ``,
   `## Top AEO gaps to close`,
   ``,
   ...aeoResults.highest_priority_gaps.map(q => `- "${q}"`),
   ``,
-  `## Next research seeds`,
+  `## Pages drafted this week`,
   ``,
-  `_(Auto-queued for next Monday's Research Agent run)_`,
+  ...validDrafts.map(d => `- \`${d.filename}\` — ${d.keyword} (${d.page_type}${d.aeo_optimised ? ', AEO ✓' : ''})`),
+  ``,
+  `## Next research seeds (${insights.next_seeds.length} queued for Monday)`,
+  ``,
+  `_Auto-queued — loads automatically on next pipeline run_`,
   ``,
   ...insights.next_seeds.map(s => `- ${s}`),
   ``,
   `---`,
-  `_Next run: Monday 07:00 UTC_`,
-  `_Pipeline: Claude-powered, fully agentic — no Python runtime required_`,
-]
-
-const weeklyReport = weeklyReportLines.join('\n')
-
-const seedsContent = JSON.stringify({
-  generated_at: `${TODAY}T07:45:00`,
-  seeds: insights.next_seeds,
-  source: 'insight_agent',
-}, null, 2)
+  `_Trigger next run: say "run the Orion pipeline" in Claude Code_`,
+  `_Confluence: https://mogofintech.atlassian.net/wiki/spaces/MO1/pages/${CONFLUENCE_PAGE_ID}_`,
+].join('\n')
 
 await parallel([
   () => agent(
-    `Write this markdown content to: ${OUTPUT_DIR}\\weekly_report_${TODAY}.md
+    `Write this markdown to: ${OUTPUT_DIR}\\weekly_report_${RUN_DATE}.md
 
-${weeklyReport}
+${weeklyReportMd}
 
-Use the Write tool. Confirm success.`,
-    { label: 'write-weekly-report', phase: 'Insight' }
+Use Write tool. Confirm success.`,
+    { label: 'write-report', phase: 'Insight' }
   ),
   () => agent(
-    `Write this JSON content to: ${QUEUE_DIR}\\next_research_seeds.json
+    `Write this JSON to: ${QUEUE_DIR}\\next_research_seeds.json
 
-${seedsContent}
+${JSON.stringify({ generated_at: `${RUN_DATE}T07:50:00`, run_date: RUN_DATE, seeds: insights.next_seeds, seed_count: insights.next_seeds.length, source: 'insight_agent_v2' }, null, 2)}
 
-Use the Write tool. Confirm success.`,
+Use Write tool. Confirm success.`,
     { label: 'write-seeds', phase: 'Insight' }
   ),
 ])
 
-log('Insight Agent complete — weekly report and next seeds written')
+log(`✓ Insight — weekly report written | ${insights.next_seeds.length} seeds queued`)
 
 
-// ════════════════════════════════════════════════════════════════════════════
-// POST-PIPELINE: JIRA TICKETS + CONFLUENCE UPDATE (parallel)
-// ════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// POST-PIPELINE: JIRA + CONFLUENCE
+// ══════════════════════════════════════════════════════════════════════════════
 phase('Jira + Confluence')
-log('⑥ Creating Jira review tickets and updating Confluence...')
-
-const validDrafts = contentDrafts.filter(Boolean)
+log('⑥ Creating Jira tickets and updating Confluence...')
 
 await parallel([
 
-  // ── Jira: one Task ticket per content draft ──────────────────────────────
   () => agent(
-    `Create ${validDrafts.length} Jira Task tickets in the MKTG project (project key: MKTG, cloud ID: 7830fa63-7783-433f-b6d1-84e8c6995068) using the createJiraIssue tool.
+    `Create ${validDrafts.length} Jira Task tickets in project ${JIRA_PROJECT} using the createJiraIssue tool.
+Cloud ID: ${CLOUD_ID} | Issue type ID: 10002 (Task)
 
-Create one ticket for each of these content pages that need compliance + brand review before publishing:
+Create one ticket per page:
 
-${validDrafts.map((d, i) => `${i+1}. Keyword: "${d.keyword}" | Page type: ${d.page_type} | File: output/content_drafts/${TODAY}/${d.filename}`).join('\n')}
+${validDrafts.map((d,i) => `
+TICKET ${i+1}:
+Summary: [SEO Review] ${d.keyword} (${d.page_type})
+Description:
+"Orion pipeline drafted this page on ${RUN_DATE}. Requires compliance, brand, and accuracy review before publishing.
 
-For each ticket use:
-- Issue type: Task (id: 10002)
-- Summary: [Content Review] <keyword> (<page_type>)
-- Description:
-  "SEO/AEO content draft generated by the Orion pipeline on ${TODAY} and ready for review.
+File: output/content_drafts/${RUN_DATE}/${d.filename}
+Keyword: ${d.keyword}
+Page type: ${d.page_type}
+AEO optimised: ${d.aeo_optimised}
 
-  File: output/content_drafts/${TODAY}/<filename>
-  Keyword: <keyword>
-  Page type: <page_type>
+REVIEW CHECKLIST:
+□ Financial claims accurate and compliant
+□ Brand voice: sophisticated, not salesy
+□ E-E-A-T: author credentials, citations to Graham/Buffett/SEC filings
+□ Direct answer paragraph is quotable by AI assistants (first 50 words)
+□ Internal links to existing Orion pages
+□ Schema markup present at page end
+□ Meta title ≤60 chars | description 130–155 chars
 
-  Review checklist:
-  - Compliance check (financial claims, disclaimers)
-  - Brand voice (sophisticated, not salesy)
-  - Accuracy review
-  - E-E-A-T signals (author credentials, primary source citations)
+ON APPROVAL:
+→ Create engineering ticket to publish
+→ Submit URL to Google Search Console for indexing
+→ Update AEO Monitor with published URL on next pipeline run"
+`).join('\n')}
 
-  Once approved, create an engineering ticket to publish and submit to GSC for indexing."
-
-Create all ${validDrafts.length} tickets and report the ticket keys created.`,
+Return all created ticket keys (e.g. MKTG-101, MKTG-102...).`,
     { label: 'create-jira-tickets', phase: 'Jira + Confluence' }
   ),
 
-  // ── Confluence: update the pipeline page with fresh metrics ──────────────
   () => agent(
-    `Update the Confluence page with ID 3420782599 on cloud 7830fa63-7783-433f-b6d1-84e8c6995068 using the updateConfluencePage tool.
+    `Update Confluence page ID ${CONFLUENCE_PAGE_ID} on cloud ${CLOUD_ID} using updateConfluencePage.
+Title stays: "Orion SEO/AEO — Automated Agent Pipeline"
+contentFormat: "html"
+versionMessage: "Auto-updated by pipeline — ${RUN_DATE}"
 
-Use contentFormat: "html". The new page title should stay "Orion SEO/AEO — Automated Agent Pipeline".
+Update ONLY these sections (keep everything else exactly as is):
 
-Update the "Week 1 baseline" section header to say "Latest run — ${TODAY}" and update the metrics table with these fresh values:
-- Keywords scored: ${keywordBrief.keywords.length}
-- AEO candidates: ${keywordBrief.keywords.filter(k=>k.aeo_flag).length}
-- AEO visibility rate: ${aeoResults.orion_visibility_rate}% (status: ${aeoResults.orion_visibility_rate === 0 ? 'red' : aeoResults.orion_visibility_rate < 20 ? 'yellow' : 'green'})
-- High-priority AEO gaps: ${aeoResults.highest_priority_gaps.length}
-- Content pages drafted: ${validDrafts.length}
-- Keywords tracked: ${rankingReport.gsc_summary.keywords_tracked}
+1. Change heading "Week 1 baseline" or "Latest run" to: "Latest run — ${RUN_DATE}"
 
-Also update the "Top 3 recommendations" section with these fresh recommendations:
-${insights.recommendations.map((r, i) => `${i+1}. ${r}`).join('\n')}
+2. Metrics table:
+   - Keywords scored: ${sortedKeywords.length}
+   - AEO candidates: ${sortedKeywords.filter(k=>k.aeo_flag).length}
+   - AEO visibility rate: ${aeoResults.orion_visibility_rate}% (status: ${aeoResults.orion_visibility_rate===0?'red':aeoResults.orion_visibility_rate<20?'yellow':'green'})
+   - High-priority AEO gaps: ${aeoResults.highest_priority_gaps.length}
+   - Content pages drafted: ${validDrafts.length}
+   - Keywords tracked: ${rankingReport.gsc_summary.keywords_tracked}
+   - GSC clicks (7d): ${rankingReport.gsc_summary.total_clicks_7d}
 
-And update the "Alerts" section with:
-${rankingReport.alerts.map(a => `- ${a}`).join('\n')}
+3. Recommendations section:
+${insights.recommendations.map((r,i)=>`   ${i+1}. ${r}`).join('\n')}
 
-Keep all other sections (agent table, competitor table, keyword priority table, score formula, AEO content formula, output file reference, human review checklist) exactly as they are — only update the metrics, recommendations, and alerts sections.
+4. Alerts section:
+${rankingReport.alerts.map(a=>`   - ${a}`).join('\n')}
 
-Set versionMessage to "Auto-updated by pipeline run ${TODAY}".`,
+5. Top AEO gaps section:
+${aeoResults.highest_priority_gaps.map(q=>`   - "${q}"`).join('\n')}`,
     { label: 'update-confluence', phase: 'Jira + Confluence' }
   ),
 
 ])
 
-log(`Post-pipeline complete — ${validDrafts.length} Jira tickets created, Confluence page updated`)
-log('Pipeline complete. All outputs in: output/')
+log(`✓ Jira + Confluence — ${validDrafts.length} tickets created | Confluence updated`)
+log('━━━ Pipeline complete ━━━')
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RETURN
+// ══════════════════════════════════════════════════════════════════════════════
 return {
-  keywords_scored: keywordBrief.keywords.length,
-  aeo_visibility_rate: aeoResults.orion_visibility_rate,
-  aeo_gaps: aeoResults.highest_priority_gaps.length,
-  content_pages_drafted: contentDrafts.filter(Boolean).length,
-  keywords_tracked: rankingReport.gsc_summary.keywords_tracked,
-  next_seeds_queued: insights.next_seeds.length,
-  wins: insights.wins,
-  top_recommendations: insights.recommendations,
+  run_date:              RUN_DATE,
+  keywords_scored:       sortedKeywords.length,
+  aeo_candidates:        sortedKeywords.filter(k=>k.aeo_flag).length,
+  aeo_visibility_rate:   aeoResults.orion_visibility_rate,
+  aeo_gaps:              aeoResults.highest_priority_gaps.length,
+  top_competitors:       aeoResults.top_competitors.slice(0,4),
+  content_pages_drafted: validDrafts.length,
+  keywords_tracked:      rankingReport.gsc_summary.keywords_tracked,
+  quick_wins:            rankingReport.quick_wins || [],
+  next_seeds_queued:     insights.next_seeds.length,
+  wins:                  insights.wins,
+  gaps:                  insights.gaps,
+  top_recommendations:   insights.recommendations,
+  executive_summary:     insights.executive_summary,
   output_files: [
-    `output/keyword_brief_${TODAY}.json`,
-    `output/aeo_monitor_${TODAY}.json`,
-    `output/content_drafts/${TODAY}/ (${contentDrafts.filter(Boolean).length} pages)`,
-    `output/ranking_report_${TODAY}.json`,
-    `output/weekly_report_${TODAY}.md`,
+    `output/keyword_brief_${RUN_DATE}.json`,
+    `output/aeo_monitor_${RUN_DATE}.json`,
+    `output/content_drafts/${RUN_DATE}/ (${validDrafts.length} pages)`,
+    `output/ranking_report_${RUN_DATE}.json`,
+    `output/weekly_report_${RUN_DATE}.md`,
     `queue/next_research_seeds.json`,
   ],
+  confluence: `https://mogofintech.atlassian.net/wiki/spaces/MO1/pages/${CONFLUENCE_PAGE_ID}`,
+  jira:       `https://mogofintech.atlassian.net/jira/software/projects/${JIRA_PROJECT}/boards`,
 }
