@@ -12,6 +12,43 @@ export const meta = {
   ],
 }
 
+// ─── COMPLIANCE KNOWN UNKNOWNS ────────────────────────────────────────────
+// 8 areas PENDING guidance from Axl Villapaz (compliance advisor).
+// Target resolution: 2026-06-15.
+// Until resolved, content touching these areas is flagged
+// "Needs revision — awaiting compliance guidance" — never auto-approved.
+const COMPLIANCE_KNOWN_UNKNOWNS = [
+  { id:'KU-1', area:'Investment advice line',            guidance:null,
+    description:'Education vs. advice distinction for statements like "most active traders underperform the S&P 500", "DCA is a disciplined long-term approach", "overtrading destroys returns". Disclaimer language required and when it must appear. Whether every piece of content needs "this is not investment advice".',
+    examples:['Most active traders underperform the S&P 500','DCA is a disciplined long-term approach','Overtrading destroys returns over time','A kill line is the price at which you exit a position'] },
+  { id:'KU-2', area:'Performance claims',                guidance:null,
+    description:'Rules for referencing the 28.40% 1-year return in marketing. Required disclaimer language by channel (website/email/social). Time period requirements. Whether benchmark comparison must always accompany return figures. Rules for general market statements like "historically, the S&P 500 has returned X% annually".',
+    examples:['28.40% 1-year return','historically, the S&P 500 has returned X% annually'] },
+  { id:'KU-3', area:'Projected returns and DCA illustrations', guidance:null,
+    description:'Whether projected return illustrations are permitted. Conditions, disclaimers, and required language for DCA calculators and growth charts. Compliant alternative if projections are not permitted.',
+    examples:['$50/week invested at historical S&P returns becomes $X over 10 years','DCA calculators showing projected growth over time'] },
+  { id:'KU-4', area:'S&P benchmark comparison',          guidance:null,
+    description:'Whether the agent can say "compare your investment decisions against the S&P 500". Whether "most self-directed investors underperform the S&P" is permitted if supported by SPIVA/DALBAR. Citation format for third-party research in marketing.',
+    examples:['Compare your investment decisions against the S&P 500','Most self-directed investors underperform the S&P'] },
+  { id:'KU-5', area:'Competitor references',             guidance:null,
+    description:'Whether publicly verifiable competitor pricing facts can be stated (e.g. "Wealthsimple charges X"). Whether "II charges a flat $20/month" vs competitors is permitted. Line between factual and misleading comparison under Canadian advertising standards.',
+    examples:['Wealthsimple charges X%','Traditional platforms charge 1.5% AUM','II charges a flat $20/month'] },
+  { id:'KU-6', area:'Behavioral finance claims',         guidance:null,
+    description:'Whether general behavioral facts like "most of us underperform because of behavioral patterns" require disclaimers. Citation format for DALBAR, SPIVA, CSA Investor Index. Difference between a general market fact and a claim triggering compliance review.',
+    examples:['Most of us underperform because of behavioral patterns','DALBAR data shows average investor underperforms the market'] },
+  { id:'KU-7', area:'Required risk disclosure by channel', guidance:null,
+    description:'Exact risk disclosure language for website product pages, member emails, The Edge newsletter, and organic social posts (Instagram, LinkedIn, X). Whether requirements differ by channel. Approved boilerplate for the agent.',
+    examples:['Website product page','Email to existing members','The Edge newsletter','Instagram/LinkedIn/X organic post'] },
+  { id:'KU-8', area:'Real-time social engagement',       guidance:null,
+    description:'Rules for engaging in public investing discussions as a registered firm on X. Whether every social reply needs pre-approval or if there is a safe zone. Topics where replies must go through Airtable first.',
+    examples:['Replying to investing conversations on X as brand account','Agent-drafted responses reviewed by Tarsila before posting'] },
+]
+
+// Derive which KU areas are still unresolved
+const UNRESOLVED_KU_AREAS = COMPLIANCE_KNOWN_UNKNOWNS
+  .filter(ku => ku.guidance === null)
+  .map(ku => ku.area.toLowerCase())
+
 // ─── CIRO COMPLIANCE REVIEWER PROMPT ──────────────────────────────────────
 // Source: Axl Villapaz — Slack #compliance, 2026-06-02
 // Applies CIRO Dealer Member Rule 3602 to all public-facing content
@@ -69,7 +106,24 @@ ESCALATION NOTE:
 [Whether Supervisor approval is required before use/publication. Err on the side of recommending review if unsure.]
 
 CLEAN REVISED CONTENT:
-[The full page content with all problematic passages replaced by suggested rewrites and missing disclosures added inline. This is the version that should be written to disk.]`
+[The full page content with all problematic passages replaced by suggested rewrites and missing disclosures added inline. This is the version that should be written to disk.]
+
+KNOWN UNKNOWNS — PENDING COMPLIANCE GUIDANCE (target: 2026-06-15):
+The following 8 areas do NOT yet have confirmed compliance guidance. If the page contains content in any of these areas, you MUST:
+1. Set the verdict to "Needs revision — awaiting compliance guidance" (overrides any other verdict)
+2. Quote the specific passage
+3. Label it with the KU ID (e.g. KU-2: Performance claims)
+4. Do NOT rewrite it — leave a placeholder: [PENDING COMPLIANCE GUIDANCE — KU-X: Area name]
+5. Set supervisor_required to true
+
+KU-1 INVESTMENT ADVICE LINE: Any statement that could be interpreted as investment advice rather than education. Flag: "most active traders underperform", "DCA is disciplined", "overtrading destroys returns", "kill line", or any similar behavioural/strategic investing statement.
+KU-2 PERFORMANCE CLAIMS: Any reference to specific return figures including the 28.40% 1-year return, or general market return statements like "the S&P 500 has historically returned X%".
+KU-3 PROJECTED RETURNS / DCA ILLUSTRATIONS: Any projected growth figure, DCA calculator output, or illustration of what contributions produce over time (e.g. "$50/week becomes $X over 10 years").
+KU-4 S&P BENCHMARK COMPARISON: Any statement comparing user/investor performance to the S&P 500, or claiming self-directed investors underperform the S&P.
+KU-5 COMPETITOR REFERENCES: Any statement of competitor pricing, fees, or feature comparisons (Wealthsimple, Questrade, etc.), including "II charges a flat $20/month" vs. competitor fees.
+KU-6 BEHAVIORAL FINANCE CLAIMS: Any statement attributing underperformance to behavioral patterns, or citing DALBAR, SPIVA, or CSA Investor Index data.
+KU-7 RISK DISCLOSURE BY CHANNEL: Any content where channel-specific risk disclosure requirements are unclear — especially social posts, newsletter content, or email to members.
+KU-8 REAL-TIME SOCIAL ENGAGEMENT: Any content drafted for social media replies or brand account engagement on X/LinkedIn/Instagram.`
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
 const RUN_DATE    = (args && args.runDate) ? args.runDate : '2026-06-01'

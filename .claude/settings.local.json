@@ -47,7 +47,8 @@
       "Bash(Test-Path \"C:\\\\Users\\\\Paige.Rogers\\\\Desktop\\\\claude codes\\\\output\\\\weekly_report_2026-06-01.md\")",
       "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__getConfluencePage",
       "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__createJiraIssue",
-      "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__createConfluencePage"
+      "mcp__542d92cc-2d7e-4880-a0cd-951ba5b30522__createConfluencePage",
+      "WebFetch(domain:willkopec.com)"
     ]
   }
 }
