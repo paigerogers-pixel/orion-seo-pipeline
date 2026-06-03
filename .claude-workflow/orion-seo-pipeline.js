@@ -1,14 +1,70 @@
 export const meta = {
   name: 'orion-seo-pipeline',
-  description: 'Full Orion AEO/SEO pipeline — 5 agents + Jira + Confluence, fully agentic',
+  description: 'Full Orion AEO/SEO pipeline — doctrine-aligned, CIRO-reviewed, 5 agents + Jira + Confluence',
   phases: [
-    { title: 'Research',          detail: 'Live SERP + community keyword discovery and scoring' },
+    { title: 'Research',          detail: 'Live SERP + community keyword discovery, scored and mapped to allocator development stages' },
     { title: 'AEO Monitor',       detail: 'AI assistant visibility audit across 10 ICP queries' },
-    { title: 'Content',           detail: 'Draft 10 publish-ready pages optimised for Google + AI retrieval' },
+    { title: 'Content',           detail: 'Draft 10 pages aligned to Dave Feller doctrine — allocator development, not generic SEO' },
+    { title: 'Compliance Review', detail: 'CIRO Rule 3602 + doctrine drift detection (6 drift types)' },
     { title: 'Ranking',           detail: 'GSC position tracking, deltas, and alerts' },
     { title: 'Insight',           detail: 'Weekly synthesis, report, and next-run seed generation' },
-    { title: 'Jira + Confluence', detail: 'Create content review tickets + refresh Confluence page' },
+    { title: 'Jira + Confluence', detail: 'Create content review tickets with doctrine + compliance verdicts + refresh Confluence page' },
   ],
+}
+
+// ─── DAVE FELLER DOCTRINE (source: June 3 2026 emails) ────────────────────
+// The operating doctrine that governs every piece of content this pipeline creates.
+// DO NOT MODIFY without alignment with Dave Feller.
+const DOCTRINE = {
+
+  mission: `We are not building an investing platform. We are building better investors.
+The allocator is the product. The portfolio is the artifact. The system is the edge.`,
+
+  the_empty_category: `Modern investing offers two choices: speculation disguised as investing, or institutional finance disguised as advice. Neither solves allocator development. We occupy the space between — where capital allocation is treated as a discipline and allocator development is the product.`,
+
+  central_thesis: `Discipline produces real wealth. Speculation produces the feeling of producing it. The challenge is not proving discipline works. The challenge is making discipline more compelling than speculation, more compelling than narrative, more compelling than impulse.`,
+
+  the_work: `The work is not producing more investors. The work is producing better allocators. The work is not increasing activity. The work is increasing judgment.`,
+
+  development_stages: ['Attention', 'Awakening', 'Commitment', 'Discipline', 'Mastery'],
+
+  five_claims: [
+    'The market humbles everyone.',
+    'The few who endure operate a specific way.',
+    'We make that way operationally possible.',
+    'You will know exactly where you stand.',
+    'Most of us prefer not to know.',
+  ],
+
+  status_we_elevate: ['discipline', 'calibration', 'underwriting', 'patience', 'process integrity', 'intellectual honesty', 'continuous learning', 'long-term thinking', 'independent thinking', 'humility'],
+
+  status_we_reject: ['activity', 'prediction', 'confidence', 'speed', 'trading', 'participation', 'wealth signaling'],
+
+  content_categories: ['Reality', 'Process', 'Judgment', 'Capital Allocation', 'Market Structure'],
+
+  voice: `Cold. Clinical. Declarative. Willing. We say what others in the category are unwilling to say. We do not perform certainty. We do not perform expertise. We do not perform superiority. The most important word in our vocabulary is "us" not "them". Always say "Most of us" — never "Most investors".`,
+
+  recruiting_motions: {
+    reactive: 'The person has already been humbled. Psychology: I do not want to repeat that mistake.',
+    anticipatory: 'The person recognizes they are vulnerable to being humbled. Psychology: I want a better way to operate before reality teaches the lesson.',
+  },
+
+  identity: `The identity is NOT "I am a winning investor." The identity IS: "I am the type of allocator who operates within a system." Outcomes fluctuate. Process endures.`,
+
+  drift_types: {
+    educational: 'Teaching without identity formation — tips, lessons, explanations that inform but do not shape identity',
+    guru: 'Predictions, experts, stock picks, market calls',
+    activity: 'Content that rewards or glorifies activity, trading, or participation',
+    pronoun: 'Using "Most investors" instead of "Most of us"',
+    identity: 'Promoting "winning investors" instead of "serious allocators"',
+    status: 'Increasing the status of prediction, activity, or confidence instead of discipline, calibration, and process',
+  },
+
+  what_we_refuse: 'Generic financial content, trend chasing, engagement farming, prediction theater, conventional fintech marketing, empty inspiration, manufactured urgency, status through wealth signaling, status through exclusivity, status through superiority.',
+
+  final_test: `Before any content ships ask: Does this reinforce allocator identity? Does this increase the status of allocator development? Does this reduce to one of the five claims? Does this attract serious allocators? Would we still publish it if engagement were irrelevant?`,
+
+  ai_rule: `AI should not replace judgment. AI should increase leverage. The documents provide judgment. AI provides speed. Never publish AI-generated content that was not filtered through the doctrine. The documents are the filter. AI is not the filter.`,
 }
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
@@ -74,8 +130,14 @@ const KEYWORD_SCHEMA = {
           score:              { type: 'number' },
           source:             { type: 'string' },
           serp_features:      { type: 'string' },
+          // ── Dave Feller doctrine fields ──────────────────────────────────
+          development_stage:  { type: 'string', enum: ['Attention','Awakening','Commitment','Discipline','Mastery'] },
+          recruiting_motion:  { type: 'string', enum: ['reactive','anticipatory'] },
+          content_category:   { type: 'string', enum: ['Reality','Process','Judgment','Capital Allocation','Market Structure'] },
+          five_claims_anchor: { type: 'string' },
+          doctrine_note:      { type: 'string' },
         },
-        required: ['keyword','intent','aeo_flag','page_type','score'],
+        required: ['keyword','intent','aeo_flag','page_type','score','development_stage','recruiting_motion','content_category'],
       },
     },
     community_phrases: {
@@ -134,8 +196,15 @@ const CONTENT_SCHEMA = {
     page_type:           { type: 'string' },
     word_count_estimate: { type: 'number' },
     aeo_optimised:       { type: 'boolean' },
+    // ── Dave Feller doctrine fields ──────────────────────────────────────
+    development_stage:   { type: 'string', enum: ['Attention','Awakening','Commitment','Discipline','Mastery'] },
+    recruiting_motion:   { type: 'string', enum: ['reactive','anticipatory'] },
+    content_category:    { type: 'string', enum: ['Reality','Process','Judgment','Capital Allocation','Market Structure'] },
+    five_claims_used:    { type: 'array', items: { type: 'string' } },
+    drift_check_passed:  { type: 'boolean' },
+    drift_issues_found:  { type: 'string' },
   },
-  required: ['slug','filename','content','keyword','page_type'],
+  required: ['slug','filename','content','keyword','page_type','development_stage','recruiting_motion','content_category','drift_check_passed'],
 }
 
 const RANKING_SCHEMA = {
@@ -272,9 +341,14 @@ Identify: 5 trending topics with content opportunities, any news hooks, and emer
 
 ])
 
-// Score and structure all findings
+// Score and structure all findings — mapped to Dave Feller doctrine
 const keywordBrief = await agent(
-  `You are the Research Agent for Orion — an intelligent investing platform for value investors (30–55 years old, Benjamin Graham / Warren Buffett philosophy, want to beat the S&P 500, frustrated with Bloomberg's price and robo-advisors' passivity).
+  `You are the Research Agent for Intelligent Investing / Orion Digital Corp. You must apply TWO frameworks simultaneously: SEO scoring AND Dave Feller's allocator development doctrine.
+
+COMPANY DOCTRINE (apply to every keyword):
+${JSON.stringify(DOCTRINE, null, 2)}
+
+ICP: Serious individual allocators who recognize that capital allocation deserves a system. NOT entertainment seekers, NOT active traders, NOT confidence-driven speculators. People who want to become better allocators — not merely richer investors.
 
 You have five research streams. Use ALL of them to build the definitive keyword brief.
 
@@ -296,7 +370,7 @@ ${trendData}
 ═══ SEEDS ═══
 ${seeds.slice(0,20).join(', ')}
 
-SCORING FORMULA:
+SEO SCORING FORMULA:
 score = volume_component(0–40)      // log-scale: 100/mo=13, 1k/mo=27, 10k/mo=40
       + intent_weight × 20          // commercial=1.4, informational=1.0, navigational=0.8
       + aeo_bonus(0–15)             // +15 if question-form, definitional, or "how to"
@@ -304,17 +378,53 @@ score = volume_component(0–40)      // log-scale: 100/mo=13, 1k/mo=27, 10k/mo=
       - difficulty_penalty(0–10)    // linear 0–100 difficulty
       + serp_boost(0–5)             // +5 if featured snippet or PAA confirmed
 
+DOCTRINE MAPPING (required for every keyword):
+
+development_stage: Which stage of allocator development does this keyword attract?
+  - Attention: person encounters a contradiction / uncomfortable truth (e.g. "why do most investors underperform")
+  - Awakening: person questions assumptions, recognizes investing is a judgment discipline (e.g. "what is allocator development")
+  - Commitment: person choosing a different way of operating (e.g. "how to start value investing systematically")
+  - Discipline: person adopting systems — underwriting, sizing, calibration (e.g. "how to write an investment thesis")
+  - Mastery: continuous improvement, compounding judgment (e.g. "how to review investment mistakes")
+
+recruiting_motion: Who is this keyword for?
+  - reactive: person already been humbled by markets (panic sell, speculation loss, position sizing mistake)
+  - anticipatory: person who recognizes they are vulnerable to being humbled, wants a system first
+
+content_category: Which doctrine category does this fall into?
+  - Reality: behavioral mistakes, investor psychology, market truths, allocator development
+  - Process: underwriting, position sizing, disconfirming evidence, re-underwriting, benchmarking
+  - Judgment: independent thinking, calibration, decision quality, probabilistic thinking
+  - Capital Allocation: portfolio construction, allocation frameworks, opportunity cost, allocator behavior
+  - Market Structure: industry incentives, financial media, wealth management, AI investing, speculation culture
+
+five_claims_anchor: Which of the five claims does this keyword best support?
+  1. "The market humbles everyone."
+  2. "The few who endure operate a specific way."
+  3. "We make that way operationally possible."
+  4. "You will know exactly where you stand."
+  5. "Most of us prefer not to know."
+
+doctrine_note: Brief note on how content for this keyword should be framed per the doctrine.
+
+DRIFT FILTER — REJECT any keyword where the most natural content would be:
+- Stock picks or market predictions (Guru Drift)
+- "Best stocks to buy" type queries (Guru Drift)
+- Active trading or frequent rebalancing content (Activity Drift)
+- Content that rewards checking prices or following trends (Activity Drift)
+- Generic financial tips without identity formation (Educational Drift)
+
 REQUIREMENTS:
 - 40+ keywords minimum
-- All 5 page types represented: pillar, cluster_article, faq, comparison, landing
+- All 5 page types represented
 - aeo_flag=true for question-form, definitional, and "how to" queries
-- Include quick-win keywords (difficulty <35, score >70) — fastest path to rankings
+- Include quick-win keywords (difficulty <35, score >70)
 - Include 3+ trend-driven keywords from 2026 data
-- Include 5+ comparison keywords (Orion vs X, best X vs Y, X alternative)
-- Include community phrases as FAQ page candidates
-- Note serp_features where confirmed
+- Include 5+ comparison keywords (Orion vs X, X alternative)
+- PRIORITIZE keywords that attract the Awakening and Discipline stages — these are the highest-value allocator development moments
+- Community phrases from the ICP voice research are excellent FAQ candidates — keep the natural language
 
-Return full structured JSON with 40+ keywords and 15+ community phrases.`,
+Return full structured JSON with 40+ keywords (including doctrine fields) and 15+ community phrases.`,
   { label: 'keyword-scoring', phase: 'Research', schema: KEYWORD_SCHEMA }
 )
 
@@ -471,47 +581,110 @@ const PAGE_INSTRUCTIONS = {
 
 const contentDrafts = await parallel(contentQueue.map((item, idx) => () =>
   agent(
-    `You are a senior content strategist for Orion — an intelligent investing platform combining Benjamin Graham-style fundamental analysis with AI-powered screening. Built for serious self-directed investors aged 30–55 who find Bloomberg too expensive and robo-advisors too passive.
+    `You are the Content Agent for Intelligent Investing / Orion Digital Corp. You produce content that serves allocator development — not generic SEO content.
 
-BRAND VOICE: Sophisticated, direct, never salesy. Speak to a serious investor. Reference Graham, Buffett, Munger naturally. Orion is the professional-grade tool for the investor who does their own research.
+You must apply Dave Feller's complete doctrine before writing a single word. The doctrine is the filter. SEO is the distribution mechanism.
+
+══════════════════════════════════════════════
+DAVE FELLER DOCTRINE (non-negotiable)
+══════════════════════════════════════════════
+
+MISSION: We are not building an investing platform. We are building better investors. The allocator is the product. The portfolio is the artifact.
+
+THE VOICE: Cold. Clinical. Declarative. Willing. We describe reality as honestly as we can.
+- ALWAYS say "Most of us" — NEVER say "Most investors"
+- Do not flatter, entertain, or manufacture urgency or certainty
+- Do not perform expertise or superiority
+- The founder, team, and audience are all subject to the same reality
+
+THE FIVE CLAIMS (every piece must reduce to at least one):
+1. The market humbles everyone.
+2. The few who endure operate a specific way.
+3. We make that way operationally possible.
+4. You will know exactly where you stand.
+5. Most of us prefer not to know.
+
+IDENTITY TO REINFORCE: "I am the type of allocator who operates within a system."
+NOT: "I am a winning investor." NOT: "I am a smart investor."
+Outcomes fluctuate. Process endures.
+
+STATUS WE ELEVATE: discipline, calibration, underwriting, patience, process integrity, intellectual honesty, continuous learning, long-term thinking, humility
+STATUS WE REJECT: activity, prediction, confidence, speed, trading, participation, wealth signaling
+
+THE CONTENT STANDARD: Make people think "That's true." NOT "That's clever." NOT "That's viral." NOT "That's a hot take." Truth first. Attention second. Always.
+
+DRIFT DETECTION — your draft will FAIL if it contains:
+✗ GURU DRIFT: predictions, stock picks, market calls, "experts say..."
+✗ ACTIVITY DRIFT: rewards activity, glorifies trading, makes checking prices aspirational
+✗ EDUCATIONAL DRIFT: teaches without shaping identity — tips that inform but do not transform
+✗ PRONOUN DRIFT: "Most investors" instead of "Most of us"
+✗ IDENTITY DRIFT: "winning investors" instead of "serious allocators"
+✗ STATUS DRIFT: elevates prediction, activity, or confidence instead of discipline, calibration, process
+✗ AI DRIFT: generic AI-generated content not filtered through doctrine
+
+══════════════════════════════════════════════
+THIS SPECIFIC PAGE
+══════════════════════════════════════════════
 
 TARGET KEYWORD: "${item.keyword}"
 PAGE TYPE: ${item.page_type}
+DEVELOPMENT STAGE: ${item.development_stage || 'Awakening'}
+RECRUITING MOTION: ${item.recruiting_motion || 'anticipatory'}
+CONTENT CATEGORY: ${item.content_category || 'Reality'}
 AEO OPTIMISED: ${item.aeo_flag}
-${item.intent ? `INTENT: ${item.intent}` : ''}
-${item.volume ? `VOLUME: ${item.volume}` : ''}
+${item.intent ? `SEARCH INTENT: ${item.intent}` : ''}
+${item.volume ? `VOLUME ESTIMATE: ${item.volume}` : ''}
 ${item.suggested_title ? `SUGGESTED TITLE: ${item.suggested_title}` : ''}
-${item.competitors && item.competitors.length > 0 ? `COMPETITORS CITED FOR THIS QUERY: ${item.competitors.join(', ')} — acknowledge their strengths briefly, then explain Orion's differentiator` : ''}
+${item.competitors && item.competitors.length > 0 ? `COMPETITORS CITED FOR THIS QUERY: ${item.competitors.join(', ')} — acknowledge briefly, then position Orion as the system for serious allocators, not just another tool` : ''}
+
+STAGE CONTEXT:
+${item.development_stage === 'Attention' ? 'This person has just encountered an uncomfortable truth about investing. The content should create recognition — "I knew this was true. I had never seen it expressed this clearly."' : ''}
+${item.development_stage === 'Awakening' ? 'This person is beginning to question assumptions. The content should help them see that investing is a judgment discipline, not an information discipline.' : ''}
+${item.development_stage === 'Commitment' ? 'This person is choosing a different way of operating. The content should make disciplined capital allocation feel like the natural way serious people operate.' : ''}
+${item.development_stage === 'Discipline' ? 'This person is adopting systems. The content should show what disciplined operation actually looks like in practice — specific, actionable, not theoretical.' : ''}
+${item.development_stage === 'Mastery' ? 'This person is compounding judgment over time. The content should reinforce continuous improvement and honest self-assessment.' : ''}
+
+RECRUITING MOTION CONTEXT:
+${item.recruiting_motion === 'reactive' ? 'Write for someone who has already been humbled. They experienced a panic sell, position sizing mistake, or speculative loss. They do not want to repeat it. Do not lecture. Speak from shared experience: "Most of us have..."' : 'Write for someone who recognizes they are vulnerable to being humbled. They see the patterns in others. They want a better system before reality forces the lesson.'}
 
 PAGE TYPE INSTRUCTIONS:
 ${PAGE_INSTRUCTIONS[item.page_type] || PAGE_INSTRUCTIONS.cluster_article}
 
 ${item.aeo_flag ? `
-AEO REQUIREMENT (CRITICAL — do not skip):
-The first paragraph must be a 40–60 word direct answer. This is what Claude/ChatGPT quotes verbatim when asked this question. Requirements:
-- Factually precise (include a specific number, comparison, or mechanism)
-- Mention Orion naturally — as the tool that solves this, not as a plug
-- Fully self-contained (readable with no context)
-- Starts with the topic directly, not "Great question..." or "There are many..."
+AEO REQUIREMENT (CRITICAL):
+The first paragraph must be a 40–60 word direct answer — the paragraph AI assistants quote verbatim.
+- Factually precise (specific mechanism, not vague)
+- Mention Orion naturally as the system that operationalizes this
+- Fully self-contained
+- Doctrine-compliant: reinforces the allocator identity, not the "winning investor" identity
 ` : ''}
 
 REQUIRED PAGE STRUCTURE:
 1. YAML frontmatter:
    - title (≤60 chars, includes keyword)
-   - description (130–155 chars, includes keyword, compelling)
+   - description (130–155 chars, includes keyword, compelling — make people think "that's true")
    - keyword: "${item.keyword}"
    - page_type: ${item.page_type}
+   - development_stage: ${item.development_stage || 'Awakening'}
+   - recruiting_motion: ${item.recruiting_motion || 'anticipatory'}
+   - content_category: ${item.content_category || 'Reality'}
    - aeo_optimised: ${item.aeo_flag}
    - run_date: ${RUN_DATE}
-2. ${item.aeo_flag ? 'Direct answer paragraph (40–60 words)' : 'Strong hook intro (40–60 words)'}
-3. Body per page type instructions
-4. FAQ block (4–5 Q&As: related long-tail + PAA queries)
-5. JSON-LD schema markup at end (Article + FAQPage)
+2. ${item.aeo_flag ? 'Direct answer paragraph (40–60 words, doctrine-compliant)' : 'Opening that creates recognition — "That\'s true. I knew it. I\'d never seen it expressed this clearly."'}
+3. Body per page type instructions — use "Most of us" language throughout, elevate status of discipline and process
+4. FAQ block (4–5 Q&As: related long-tail + PAA queries — doctrine-compliant, no guru drift)
+5. JSON-LD schema at end (Article + FAQPage)
 
-Slug: lowercase, hyphens only, max 60 chars from the keyword.
+After writing the content, return the doctrine compliance check:
+- drift_check_passed: true only if NONE of the 6 drift types are present
+- drift_issues_found: describe any issues found (empty string if none)
+- development_stage, recruiting_motion, content_category: confirm what you used
+- five_claims_used: which of the five claims appear in the content
+
+Slug: lowercase, hyphens only, max 60 chars.
 Filename: <slug>.md
 
-Return ONLY the markdown. No preamble, no commentary.`,
+Return ONLY the structured output. No preamble.`,
     {
       label: `draft-${idx+1}-${item.keyword.slice(0,25).replace(/\s+/g,'-')}`,
       phase: 'Content',
@@ -537,7 +710,9 @@ Confirm each file written successfully.`,
   { label: 'write-content', phase: 'Content' }
 )
 
-log(`✓ Content — ${validDrafts.length} pages written | ${validDrafts.filter(d=>d.aeo_optimised).length} AEO-optimised`)
+const driftFailed = validDrafts.filter(d => d.drift_check_passed === false)
+const doctrineAligned = validDrafts.filter(d => d.drift_check_passed === true)
+log(`✓ Content — ${validDrafts.length} pages written | ${doctrineAligned.length} doctrine-aligned | ${driftFailed.length} drift issues flagged | ${validDrafts.filter(d=>d.aeo_optimised).length} AEO-optimised`)
 
 
 // ══════════════════════════════════════════════════════════════════════════════
