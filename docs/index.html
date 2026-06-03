@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orion SEO/AEO Pipeline</title>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1e2d45;
+      --accent: #3b82f6;
+      --accent2: #8b5cf6;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --pill: #162032;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; line-height: 1.6; }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,14,26,0.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
+    .nav-logo svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.875rem; transition: color .2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--accent); color: #fff; border: none; padding: .45rem 1rem;
+      border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none;
+      transition: opacity .2s;
+    }
+    .nav-cta:hover { opacity: .85; }
+
+    /* HERO */
+    .hero {
+      text-align: center; padding: 5rem 2rem 3.5rem;
+      background: radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--pill); border: 1px solid var(--border); border-radius: 20px;
+      padding: .3rem .9rem; font-size: .75rem; color: var(--accent); font-weight: 500; margin-bottom: 1.5rem;
+    }
+    .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+    h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 1.2rem; }
+    h1 em { font-style: normal; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 1.1rem; color: var(--muted); max-width: 620px; margin: 0 auto 2rem; }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--accent); color: #fff; padding: .75rem 1.75rem;
+      border-radius: 8px; font-weight: 700; font-size: .95rem; text-decoration: none;
+      transition: opacity .2s; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary:hover { opacity: .85; }
+    .btn-secondary {
+      background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+      padding: .75rem 1.75rem; border-radius: 8px; font-weight: 600; font-size: .95rem;
+      text-decoration: none; transition: border-color .2s; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    /* METRICS BAR */
+    .metrics-bar {
+      display: flex; gap: 1px; background: var(--border); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    }
+    .metric {
+      flex: 1; background: var(--surface); padding: 1.5rem 1rem; text-align: center;
+    }
+    .metric-value { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
+    .metric-label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: .2rem; }
+    .metric-value.green { color: var(--green); }
+    .metric-value.yellow { color: var(--yellow); }
+    .metric-value.red { color: var(--red); }
+    .metric-value.blue { color: var(--accent); }
+
+    /* MAIN */
+    main { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem; }
+    .section-label { font-size: .7rem; color: var(--accent); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; margin-bottom: .75rem; }
+    h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 1.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: .75rem; }
+
+    /* PIPELINE FLOW */
+    .pipeline { display: flex; gap: 0; align-items: stretch; margin-bottom: 3rem; overflow-x: auto; }
+    .phase {
+      flex: 1; min-width: 140px; background: var(--surface); border: 1px solid var(--border);
+      padding: 1.25rem 1rem; position: relative; transition: border-color .2s;
+    }
+    .phase:not(:last-child)::after {
+      content: '→'; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: .9rem; z-index: 1; background: var(--bg); padding: 2px;
+    }
+    .phase:first-child { border-radius: 10px 0 0 10px; }
+    .phase:last-child { border-radius: 0 10px 10px 0; }
+    .phase:hover { border-color: var(--accent); }
+    .phase-num { font-size: .65rem; color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: .4rem; }
+    .phase-name { font-size: .9rem; font-weight: 700; margin-bottom: .4rem; }
+    .phase-desc { font-size: .75rem; color: var(--muted); line-height: 1.4; }
+    .phase.new { border-color: var(--accent2); }
+    .phase.new .phase-num { color: var(--accent2); }
+    .new-badge { display: inline-block; background: var(--accent2); color: #fff; font-size: .6rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+
+    /* GRID */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 3rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 3rem; }
+    @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
+    .card:hover { border-color: var(--border); }
+
+    /* AEO TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th { text-align: left; padding: .75rem 1rem; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); }
+    td { padding: .75rem 1rem; border-bottom: 1px solid rgba(30,45,69,.5); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(59,130,246,.04); }
+    .badge { display: inline-block; padding: .2rem .6rem; border-radius: 4px; font-size: .7rem; font-weight: 600; }
+    .badge-red { background: rgba(239,68,68,.15); color: var(--red); }
+    .badge-yellow { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .badge-green { background: rgba(16,185,129,.15); color: var(--green); }
+    .badge-blue { background: rgba(59,130,246,.15); color: var(--accent); }
+
+    /* QUICK WINS */
+    .quick-win { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: .75rem; background: var(--surface2); }
+    .qw-pos { font-size: 1.4rem; font-weight: 800; color: var(--yellow); min-width: 50px; text-align: center; }
+    .qw-kw { font-size: .875rem; font-weight: 600; margin-bottom: .25rem; }
+    .qw-action { font-size: .8rem; color: var(--muted); }
+
+    /* COMPETITOR BAR */
+    .comp-row { display: flex; align-items: center; gap: 1rem; margin-bottom: .75rem; }
+    .comp-name { min-width: 120px; font-size: .875rem; font-weight: 600; }
+    .comp-bar-bg { flex: 1; background: var(--border); border-radius: 4px; height: 8px; overflow: hidden; }
+    .comp-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--red), #f97316); }
+    .comp-count { font-size: .75rem; color: var(--muted); min-width: 50px; text-align: right; }
+
+    /* STARTER KIT BOX */
+    .starter-kit {
+      background: linear-gradient(135deg, rgba(59,130,246,.1), rgba(139,92,246,.1));
+      border: 1px solid rgba(59,130,246,.3); border-radius: 12px; padding: 2rem; margin-bottom: 3rem;
+    }
+    .starter-kit h2 { margin-bottom: .5rem; }
+    .starter-kit p { color: var(--muted); margin-bottom: 1.5rem; }
+    .code-block {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem 1.25rem; font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .85rem; color: var(--green); margin-bottom: 1rem; white-space: pre-wrap;
+    }
+    .copy-btn {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      padding: .4rem .9rem; border-radius: 6px; font-size: .8rem; cursor: pointer; transition: border-color .2s;
+    }
+    .copy-btn:hover { border-color: var(--accent); }
+
+    /* STEPS */
+    .steps { counter-reset: step; }
+    .step { display: flex; gap: 1rem; margin-bottom: 1.25rem; align-items: flex-start; }
+    .step::before {
+      counter-increment: step; content: counter(step);
+      min-width: 28px; height: 28px; background: var(--accent); color: #fff;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+    }
+    .step-content strong { display: block; margin-bottom: .2rem; }
+    .step-content span { font-size: .875rem; color: var(--muted); }
+    code { background: var(--surface2); border: 1px solid var(--border); padding: .1rem .4rem; border-radius: 4px; font-family: monospace; font-size: .85em; }
+
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; color: var(--muted); font-size: .8rem; }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* COMPLIANCE */
+    .compliance-alert {
+      background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.25);
+      border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: .875rem;
+      display: flex; gap: .75rem; align-items: flex-start;
+    }
+    .compliance-alert .icon { font-size: 1.1rem; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="13" stroke="#3b82f6" stroke-width="2"/>
+      <circle cx="14" cy="14" r="5" fill="#3b82f6"/>
+      <circle cx="14" cy="4"  r="2" fill="#8b5cf6"/>
+      <circle cx="14" cy="24" r="2" fill="#8b5cf6"/>
+      <circle cx="4"  cy="14" r="2" fill="#8b5cf6"/>
+      <circle cx="24" cy="14" r="2" fill="#8b5cf6"/>
+    </svg>
+    Orion SEO/AEO Pipeline
+  </div>
+  <div class="nav-links">
+    <a href="#pipeline">Pipeline</a>
+    <a href="#metrics">Metrics</a>
+    <a href="#aeo">AEO Gaps</a>
+    <a href="#quickwins">Quick Wins</a>
+    <a href="#starter">Starter Kit</a>
+  </div>
+  <a href="https://mogofintech.atlassian.net/wiki/spaces/MO1/pages/3420782599" class="nav-cta" target="_blank">Confluence ↗</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge"><span></span> Fully agentic — no Python required</div>
+  <h1>Orion <em>SEO/AEO</em><br/>Intelligence Pipeline</h1>
+  <p>Six AI agents run every Monday. Research, audit, draft, review for CIRO compliance, track rankings, synthesise insights — then push to Jira and Confluence automatically.</p>
+  <div class="hero-actions">
+    <a href="#starter" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l1.5 3h3l-2.4 1.8.9 3L8 7l-3 1.8.9-3L3.5 4h3z"/></svg>
+      Get the Starter Kit
+    </a>
+    <a href="https://github.com/paigerogers-pixel/orion-seo-pipeline" class="btn-secondary" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+</div>
+
+<div class="metrics-bar">
+  <div class="metric"><div class="metric-value blue">53</div><div class="metric-label">Keywords scored</div></div>
+  <div class="metric"><div class="metric-value blue">31</div><div class="metric-label">AEO candidates</div></div>
+  <div class="metric"><div class="metric-value red">0%</div><div class="metric-label">AEO visibility</div></div>
+  <div class="metric"><div class="metric-value yellow">40%</div><div class="metric-label">Target (wk 8)</div></div>
+  <div class="metric"><div class="metric-value green">10</div><div class="metric-label">Pages drafted</div></div>
+  <div class="metric"><div class="metric-value green">9</div><div class="metric-label">AEO-optimised</div></div>
+  <div class="metric"><div class="metric-value blue">25</div><div class="metric-label">Seeds queued</div></div>
+  <div class="metric"><div class="metric-value blue">2026-06-02</div><div class="metric-label">Last run</div></div>
+</div>
+
+<main>
+
+  <!-- PIPELINE FLOW -->
+  <section id="pipeline" style="margin-bottom:3rem">
+    <div class="section-label">How it works</div>
+    <h2>Six agents, one loop</h2>
+    <div class="pipeline">
+      <div class="phase">
+        <div class="phase-num">① Research</div>
+        <div class="phase-name">Keyword Discovery</div>
+        <div class="phase-desc">5 parallel web searches — SERP, competitors, community language, AEO signals, trends</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">② AEO Monitor</div>
+        <div class="phase-name">AI Visibility Audit</div>
+        <div class="phase-desc">10 ICP queries audited — what Claude &amp; ChatGPT say today, which competitors are cited</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">③ Content</div>
+        <div class="phase-name">Page Drafting</div>
+        <div class="phase-desc">10 pages drafted in parallel — AEO gap pages first, direct-answer structure for AI retrieval</div>
+      </div>
+      <div class="phase new">
+        <div class="phase-num">③b CIRO <span class="new-badge">NEW</span></div>
+        <div class="phase-name">Compliance Review</div>
+        <div class="phase-desc">Line-by-line CIRO Rule 3602 review of every draft — flags, rewrites, supervisor requirements</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">④ Ranking</div>
+        <div class="phase-name">Position Tracking</div>
+        <div class="phase-desc">GSC deltas, 7d vs prior-7d, AEO visibility trend, alerts for significant changes</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">⑤ Insight</div>
+        <div class="phase-name">Synthesis + Seeds</div>
+        <div class="phase-desc">Weekly report → Jira tickets → Confluence update → 25 seeds queued for next Monday</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- METRICS + COMPLIANCE -->
+  <section id="metrics" style="margin-bottom:3rem">
+    <div class="section-label">Latest run — 2026-06-02</div>
+    <h2>This week's results</h2>
+    <div class="compliance-alert">
+      <span class="icon">⚠️</span>
+      <div><strong>CIRO Compliance:</strong> All 10 pages flagged <em>Needs revision — awaiting compliance guidance</em>. This is expected — 8 known unknowns (KU-1 through KU-8) are pending Axl's guidance (due 2026-06-15). No pages publishable until resolved. Supervisor approval required for all 10. <a href="https://mogofintech.atlassian.net/wiki/spaces/MO1/pages/3425370122" target="_blank" style="color:var(--yellow)">View Compliance Guidance page →</a></div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h3>Wins</h3>
+        <ul style="list-style:none;font-size:.875rem;color:var(--muted);display:flex;flex-direction:column;gap:.6rem">
+          <li>✅ 10 pages drafted, 9 AEO-optimised — covers full value investing funnel</li>
+          <li>✅ 31 AEO candidates with two-track strategy mapped</li>
+          <li>✅ 3 quick wins in positions 9–13 with strong momentum</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Gaps &amp; Risks</h3>
+        <ul style="list-style:none;font-size:.875rem;color:var(--muted);display:flex;flex-direction:column;gap:.6rem">
+          <li>🔴 0% AEO visibility — every AI response cites competitors</li>
+          <li>🔴 GSC not connected — ranking data incomplete</li>
+          <li>🟡 No dedicated screener landing page for bottom-of-funnel</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Recommendations</h3>
+        <ol style="list-style:none;font-size:.875rem;color:var(--muted);display:flex;flex-direction:column;gap:.6rem;counter-reset:rec">
+          <li style="display:flex;gap:.5rem"><span style="color:var(--accent);font-weight:700;min-width:1rem">1.</span> Publish 3 pillar pages with FAQ schema immediately</li>
+          <li style="display:flex;gap:.5rem"><span style="color:var(--accent);font-weight:700;min-width:1rem">2.</span> Quick-win refresh: "what questions should I ask before buying a stock" (pos 9.8)</li>
+          <li style="display:flex;gap:.5rem"><span style="color:var(--accent);font-weight:700;min-width:1rem">3.</span> Connect GSC + fix stalling screener page (pos 38.9, near-flat delta)</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- AEO GAPS -->
+  <section id="aeo" style="margin-bottom:3rem">
+    <div class="section-label">AEO Monitor</div>
+    <h2>What AI says today — and who it cites</h2>
+
+    <div class="grid-2" style="margin-bottom:2rem">
+      <div class="card">
+        <h3>Competitor citation frequency (10 ICP queries)</h3>
+        <div style="margin-top:1rem">
+          <div class="comp-row"><span class="comp-name">GuruFocus</span><div class="comp-bar-bg"><div class="comp-bar-fill" style="width:90%"></div></div><span class="comp-count">9/10</span></div>
+          <div class="comp-row"><span class="comp-name">Morningstar</span><div class="comp-bar-bg"><div class="comp-bar-fill" style="width:80%"></div></div><span class="comp-count">8/10</span></div>
+          <div class="comp-row"><span class="comp-name">Bloomberg</span><div class="comp-bar-bg"><div class="comp-bar-fill" style="width:70%"></div></div><span class="comp-count">7/10</span></div>
+          <div class="comp-row"><span class="comp-name">Simply Wall St</span><div class="comp-bar-bg"><div class="comp-bar-fill" style="width:60%"></div></div><span class="comp-count">6/10</span></div>
+          <div class="comp-row"><span class="comp-name">TIKR</span><div class="comp-bar-bg"><div class="comp-bar-fill" style="width:55%"></div></div><span class="comp-count">5.5/10</span></div>
+          <div class="comp-row"><span class="comp-name">Koyfin</span><div class="comp-bar-bg"><div class="comp-bar-fill" style="width:50%"></div></div><span class="comp-count">5/10</span></div>
+          <div class="comp-row" style="margin-top:.5rem">
+            <span class="comp-name" style="color:var(--accent);font-weight:700">Orion</span>
+            <div class="comp-bar-bg"><div class="comp-bar-fill" style="width:0%;background:var(--accent)"></div></div>
+            <span class="comp-count" style="color:var(--red)">0/10</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Visibility rate over time</h3>
+        <div style="display:flex;align-items:flex-end;gap:8px;height:120px;margin-top:1.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="flex:1;background:var(--red);width:100%;border-radius:3px 3px 0 0;opacity:.3;min-height:4px"></div>
+            <span style="font-size:.65rem;color:var(--muted)">Wk 1</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="flex:1;background:var(--red);width:100%;border-radius:3px 3px 0 0;opacity:.3;min-height:4px"></div>
+            <span style="font-size:.65rem;color:var(--muted)">Wk 2</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.4">
+            <div style="height:20px;background:var(--muted);width:100%;border-radius:3px 3px 0 0;border:1px dashed var(--muted)"></div>
+            <span style="font-size:.65rem;color:var(--muted)">Wk 4</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.3">
+            <div style="height:40px;background:var(--yellow);width:100%;border-radius:3px 3px 0 0;border:1px dashed var(--yellow)"></div>
+            <span style="font-size:.65rem;color:var(--muted)">Wk 6</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.25">
+            <div style="height:80px;background:var(--green);width:100%;border-radius:3px 3px 0 0;border:1px dashed var(--green)"></div>
+            <span style="font-size:.65rem;color:var(--muted)">Wk 8</span>
+          </div>
+        </div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:.75rem">Target: 40% visibility by week 8. Currently at 0% baseline. Projected trajectory once pillar pages are published and indexed.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem">
+      <h3 style="margin-bottom:1rem">Top 5 AEO gaps to close</h3>
+      <table>
+        <thead><tr><th>Query</th><th>Competitors cited</th><th>Priority</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600">What is intelligent investing?</td>
+            <td><span style="color:var(--green);font-size:.8rem">None — open lane</span></td>
+            <td><span class="badge badge-red">High</span></td>
+            <td style="font-size:.8rem;color:var(--muted)">Brand-defining pillar — publish first</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Best platform for value investing research?</td>
+            <td style="font-size:.8rem">GuruFocus, Morningstar, Bloomberg, TIKR, Koyfin, Simply Wall St</td>
+            <td><span class="badge badge-red">High</span></td>
+            <td style="font-size:.8rem;color:var(--muted)">Comparison: Orion vs GuruFocus vs Morningstar</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Best stock screener for value investors?</td>
+            <td style="font-size:.8rem">GuruFocus, Finviz, TIKR, Simply Wall St</td>
+            <td><span class="badge badge-red">High</span></td>
+            <td style="font-size:.8rem;color:var(--muted)">Comparison page with feature matrix + pricing</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">How to calculate intrinsic value?</td>
+            <td style="font-size:.8rem">GuruFocus, Simply Wall St, StockAnalysis.com</td>
+            <td><span class="badge badge-red">High</span></td>
+            <td style="font-size:.8rem;color:var(--muted)">Interactive DCF + Graham Number calculator</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">How to find undervalued stocks?</td>
+            <td style="font-size:.8rem">Finviz, StockAnalysis.com, GuruFocus</td>
+            <td><span class="badge badge-red">High</span></td>
+            <td style="font-size:.8rem;color:var(--muted)">Step-by-step how-to with Orion workflow</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- QUICK WINS -->
+  <section id="quickwins" style="margin-bottom:3rem">
+    <div class="section-label">Ranking</div>
+    <h2>Quick wins — target page 1 within 60 days</h2>
+    <div class="quick-win">
+      <div class="qw-pos">9.8</div>
+      <div>
+        <div class="qw-kw">what questions should I ask before buying a stock</div>
+        <div class="qw-action">70 clicks/week · difficulty 18 · delta -2.2 · FAQ schema + internal link + 2–3 backlinks → top 5 in 30 days</div>
+      </div>
+      <span class="badge badge-green" style="margin-left:auto;white-space:nowrap">30 days</span>
+    </div>
+    <div class="quick-win">
+      <div class="qw-pos">11.4</div>
+      <div>
+        <div class="qw-kw">what financial ratios matter most for value investing</div>
+        <div class="qw-action">38 clicks/week · difficulty 20 · delta -2.5 (strongest on board) · internal link from value investing pillar → page 1</div>
+      </div>
+      <span class="badge badge-green" style="margin-left:auto;white-space:nowrap">30 days</span>
+    </div>
+    <div class="quick-win">
+      <div class="qw-pos">13.5</div>
+      <div>
+        <div class="qw-kw">what P/E ratio is too high to buy a stock</div>
+        <div class="qw-action">33 clicks/week · difficulty 22 · delta -1.9 · comparison table (P/E by sector) + schema definition block → page 1 in 45 days</div>
+      </div>
+      <span class="badge badge-yellow" style="margin-left:auto;white-space:nowrap">45 days</span>
+    </div>
+  </section>
+
+  <!-- STARTER KIT -->
+  <section id="starter">
+    <div class="section-label">Portable setup</div>
+    <h2>Starter Kit — run in a fresh session</h2>
+    <div class="starter-kit">
+      <p>Clone the repo and drop this into Claude Code. Everything runs natively — no Python, no Node.js, no servers.</p>
+
+      <h3 style="margin-bottom:.75rem">Option 1 — Clone from GitHub</h3>
+      <div class="code-block">git clone https://github.com/paigerogers-pixel/orion-seo-pipeline.git
+cd orion-seo-pipeline</div>
+
+      <h3 style="margin-bottom:.75rem;margin-top:1.5rem">Option 2 — Download ZIP</h3>
+      <a href="https://github.com/paigerogers-pixel/orion-seo-pipeline/archive/refs/heads/master.zip" class="btn-secondary" style="display:inline-flex;margin-bottom:1.5rem">
+        ⬇ Download orion-seo-pipeline.zip
+      </a>
+
+      <h3 style="margin-bottom:1rem;margin-top:.5rem">Then in Claude Code</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-content">
+            <strong>Open the folder in Claude Code</strong>
+            <span>File → Open Folder → select <code>orion-seo-pipeline</code></span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-content">
+            <strong>Copy <code>.env.example</code> to <code>.env</code></strong>
+            <span>Add your <code>ANTHROPIC_API_KEY</code> (minimum required to run)</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-content">
+            <strong>Run the pipeline</strong>
+            <span>Just say: <code>run the Orion pipeline</code> — all 6 agents fire automatically</span>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-content">
+            <strong>Review outputs</strong>
+            <span>Outputs in <code>output/</code> · Jira tickets created · Confluence auto-updated</span>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:.75rem;margin-top:1.5rem">Optional integrations</h3>
+      <table>
+        <thead><tr><th>Env var</th><th>Purpose</th><th>Required?</th></tr></thead>
+        <tbody>
+          <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Runs all 6 agents</td><td><span class="badge badge-red">Required</span></td></tr>
+          <tr><td><code>GSC_SERVICE_ACCOUNT_JSON</code></td><td>Real Google Search Console data</td><td><span class="badge badge-blue">Optional</span></td></tr>
+          <tr><td><code>GSC_SITE_URL</code></td><td>Your site URL for GSC</td><td><span class="badge badge-blue">Optional</span></td></tr>
+          <tr><td><code>DATAFORSEO_LOGIN</code> / <code>_PASSWORD</code></td><td>Real keyword volumes</td><td><span class="badge badge-blue">Optional</span></td></tr>
+          <tr><td><code>OPENAI_API_KEY</code></td><td>Monitor ChatGPT AEO responses</td><td><span class="badge badge-blue">Optional</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>Orion SEO/AEO Pipeline · Built with Claude Code · <a href="https://github.com/paigerogers-pixel/orion-seo-pipeline" target="_blank">GitHub</a> · <a href="https://mogofintech.atlassian.net/wiki/spaces/MO1/pages/3420782599" target="_blank">Confluence</a> · <a href="https://mogofintech.atlassian.net/jira/software/projects/MKTG/boards" target="_blank">Jira MKTG</a></p>
+  <p style="margin-top:.5rem;color:#374151">Last updated: 2026-06-02 · Next run: Monday 2026-06-08 07:00 UTC</p>
+</footer>
+
+</body>
+</html>
