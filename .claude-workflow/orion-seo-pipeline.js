@@ -1,15 +1,129 @@
 export const meta = {
   name: 'orion-seo-pipeline',
-  description: 'Full Orion AEO/SEO pipeline — 5 agents + Jira + Confluence, fully agentic',
+  description: 'Full Orion AEO/SEO pipeline — 5 agents + CIRO compliance review + Jira + Confluence',
   phases: [
     { title: 'Research',          detail: 'Live SERP + community keyword discovery and scoring' },
     { title: 'AEO Monitor',       detail: 'AI assistant visibility audit across 10 ICP queries' },
     { title: 'Content',           detail: 'Draft 10 publish-ready pages optimised for Google + AI retrieval' },
+    { title: 'Compliance Review', detail: 'CIRO Rule 3602 line-by-line review of every draft before publish' },
     { title: 'Ranking',           detail: 'GSC position tracking, deltas, and alerts' },
     { title: 'Insight',           detail: 'Weekly synthesis, report, and next-run seed generation' },
-    { title: 'Jira + Confluence', detail: 'Create content review tickets + refresh Confluence page' },
+    { title: 'Jira + Confluence', detail: 'Create content review tickets with compliance verdicts + refresh Confluence page' },
   ],
 }
+
+// ─── COMPLIANCE KNOWN UNKNOWNS ────────────────────────────────────────────
+// 8 areas PENDING guidance from Axl Villapaz (compliance advisor).
+// Target resolution: 2026-06-15.
+// Until resolved, content touching these areas is flagged
+// "Needs revision — awaiting compliance guidance" — never auto-approved.
+const COMPLIANCE_KNOWN_UNKNOWNS = [
+  { id:'KU-1', area:'Investment advice line',            guidance:null,
+    description:'Education vs. advice distinction for statements like "most active traders underperform the S&P 500", "DCA is a disciplined long-term approach", "overtrading destroys returns". Disclaimer language required and when it must appear. Whether every piece of content needs "this is not investment advice".',
+    examples:['Most active traders underperform the S&P 500','DCA is a disciplined long-term approach','Overtrading destroys returns over time','A kill line is the price at which you exit a position'] },
+  { id:'KU-2', area:'Performance claims',                guidance:null,
+    description:'Rules for referencing the 28.40% 1-year return in marketing. Required disclaimer language by channel (website/email/social). Time period requirements. Whether benchmark comparison must always accompany return figures. Rules for general market statements like "historically, the S&P 500 has returned X% annually".',
+    examples:['28.40% 1-year return','historically, the S&P 500 has returned X% annually'] },
+  { id:'KU-3', area:'Projected returns and DCA illustrations', guidance:null,
+    description:'Whether projected return illustrations are permitted. Conditions, disclaimers, and required language for DCA calculators and growth charts. Compliant alternative if projections are not permitted.',
+    examples:['$50/week invested at historical S&P returns becomes $X over 10 years','DCA calculators showing projected growth over time'] },
+  { id:'KU-4', area:'S&P benchmark comparison',          guidance:null,
+    description:'Whether the agent can say "compare your investment decisions against the S&P 500". Whether "most self-directed investors underperform the S&P" is permitted if supported by SPIVA/DALBAR. Citation format for third-party research in marketing.',
+    examples:['Compare your investment decisions against the S&P 500','Most self-directed investors underperform the S&P'] },
+  { id:'KU-5', area:'Competitor references',             guidance:null,
+    description:'Whether publicly verifiable competitor pricing facts can be stated (e.g. "Wealthsimple charges X"). Whether "II charges a flat $20/month" vs competitors is permitted. Line between factual and misleading comparison under Canadian advertising standards.',
+    examples:['Wealthsimple charges X%','Traditional platforms charge 1.5% AUM','II charges a flat $20/month'] },
+  { id:'KU-6', area:'Behavioral finance claims',         guidance:null,
+    description:'Whether general behavioral facts like "most of us underperform because of behavioral patterns" require disclaimers. Citation format for DALBAR, SPIVA, CSA Investor Index. Difference between a general market fact and a claim triggering compliance review.',
+    examples:['Most of us underperform because of behavioral patterns','DALBAR data shows average investor underperforms the market'] },
+  { id:'KU-7', area:'Required risk disclosure by channel', guidance:null,
+    description:'Exact risk disclosure language for website product pages, member emails, The Edge newsletter, and organic social posts (Instagram, LinkedIn, X). Whether requirements differ by channel. Approved boilerplate for the agent.',
+    examples:['Website product page','Email to existing members','The Edge newsletter','Instagram/LinkedIn/X organic post'] },
+  { id:'KU-8', area:'Real-time social engagement',       guidance:null,
+    description:'Rules for engaging in public investing discussions as a registered firm on X. Whether every social reply needs pre-approval or if there is a safe zone. Topics where replies must go through Airtable first.',
+    examples:['Replying to investing conversations on X as brand account','Agent-drafted responses reviewed by Tarsila before posting'] },
+]
+
+// Derive which KU areas are still unresolved
+const UNRESOLVED_KU_AREAS = COMPLIANCE_KNOWN_UNKNOWNS
+  .filter(ku => ku.guidance === null)
+  .map(ku => ku.area.toLowerCase())
+
+// ─── CIRO COMPLIANCE REVIEWER PROMPT ──────────────────────────────────────
+// Source: Axl Villapaz — Slack #compliance, 2026-06-02
+// Applies CIRO Dealer Member Rule 3602 to all public-facing content
+const CIRO_COMPLIANCE_PROMPT = `You are a compliance review assistant for a CIRO member firm (IntelligentInvesting Securities Inc. / Orion Digital Corp.). Your role is to review all public-facing marketing, advertisements, sales communications, and client communications for compliance risk under CIRO Dealer Member Rule 3602, with a conservative, compliance-first standard.
+
+FOOTER DISCLOSURE (present on all Orion pages — still review critically):
+"Communications and materials provided by or on behalf of IntelligentInvesting Securities Inc. ("IISI"), IntelligentInvesting Wealth Management Inc. ("IIWMI"), IntelligentInvesting Financial Technologies Inc., or Mogo Finance Technology Inc., each of which forms part of the Orion Digital Corp. (formerly Mogo Inc.), and may be distributed through email, websites, social media platforms, or other marketing channels.
+
+The information contained in these communications or materials is provided for informational purposes only and should not be interpreted as a promise of specific results or future performance. Nothing herein should be considered investment advice or an offer or solicitation to buy or sell securities. The information provided may not be suitable or applicable to all investors.
+
+The information provided in these materials is not a research report and should not serve as the basis for making investment decisions. Certain statements may reflect opinions, assumptions, or forward-looking views that are subject to change and may not reflect actual outcomes. Historical returns, hypothetical returns, expected returns, and images are provided for illustrative purposes only. Past returns are no guarantee of future performance.
+
+No representation or warranty, express or implied, is made regarding the accuracy, completeness, or timeliness of the information presented. Any statistics, examples, projections, or market illustrations are provided for explanatory purposes only and should not be relied upon as guarantees of future results.
+
+Investing involves risk, and it is possible to lose some or all of your investment. Always research before investing.
+
+References to third-party websites, platforms, or social media content are provided solely for informational purposes. Orion Digital Corp. and its affiliated entities do not control and are not responsible for the content of such third-party sites, and do not endorse, approve, certify, or guarantee the accuracy or reliability of the information contained therein."
+
+REVIEW STANDARD:
+Be strict, practical, and risk-aware. Do not assume wording is acceptable just because it is common marketing language. Flag issues where wording could be:
+- Misleading by implication
+- Incomplete due to omitted facts
+- Overly promotional
+- Unbalanced on risk vs benefit
+- Suggestive of certainty, safety, or guaranteed outcomes
+- Unclear about assumptions, limitations, or conditions
+
+FLAG content that:
+- Contains an untrue statement, omission of material fact, or is false or misleading
+- Uses language that creates a misleading impression
+- Contains an unjustified promise of specific results
+- Uses unrepresentative statistics or fails to identify material assumptions
+- Includes opinions or forecasts not clearly labelled as opinion or forecast
+- Fails to fairly present potential risks
+- Is detrimental to the interests of the public, CIRO, or Dealer Members
+
+OUTPUT FORMAT — respond in this exact structure for every page:
+
+COMPLIANCE VERDICT: [Likely compliant / Needs revision / High risk — likely non-compliant]
+
+RISK SUMMARY:
+[2–3 sentences explaining the main compliance concerns in plain language]
+
+CIRO 3602 ISSUES (line by line):
+For each problematic line or passage:
+- QUOTED TEXT: "[exact quote]"
+- RULE CATEGORY: [false or misleading statement / misleading visual impression / unjustified promise of results / unrepresentative statistics / unlabelled forecast or opinion / inadequate risk disclosure / other CIRO concern]
+- WHY THIS IS A CONCERN: [specific explanation]
+- SUGGESTED REWRITE: [safer, compliant alternative wording]
+
+MISSING DISCLOSURES:
+[List any qualifications, assumptions, or risk statements that should be added]
+
+ESCALATION NOTE:
+[Whether Supervisor approval is required before use/publication. Err on the side of recommending review if unsure.]
+
+CLEAN REVISED CONTENT:
+[The full page content with all problematic passages replaced by suggested rewrites and missing disclosures added inline. This is the version that should be written to disk.]
+
+KNOWN UNKNOWNS — PENDING COMPLIANCE GUIDANCE (target: 2026-06-15):
+The following 8 areas do NOT yet have confirmed compliance guidance. If the page contains content in any of these areas, you MUST:
+1. Set the verdict to "Needs revision — awaiting compliance guidance" (overrides any other verdict)
+2. Quote the specific passage
+3. Label it with the KU ID (e.g. KU-2: Performance claims)
+4. Do NOT rewrite it — leave a placeholder: [PENDING COMPLIANCE GUIDANCE — KU-X: Area name]
+5. Set supervisor_required to true
+
+KU-1 INVESTMENT ADVICE LINE: Any statement that could be interpreted as investment advice rather than education. Flag: "most active traders underperform", "DCA is disciplined", "overtrading destroys returns", "kill line", or any similar behavioural/strategic investing statement.
+KU-2 PERFORMANCE CLAIMS: Any reference to specific return figures including the 28.40% 1-year return, or general market return statements like "the S&P 500 has historically returned X%".
+KU-3 PROJECTED RETURNS / DCA ILLUSTRATIONS: Any projected growth figure, DCA calculator output, or illustration of what contributions produce over time (e.g. "$50/week becomes $X over 10 years").
+KU-4 S&P BENCHMARK COMPARISON: Any statement comparing user/investor performance to the S&P 500, or claiming self-directed investors underperform the S&P.
+KU-5 COMPETITOR REFERENCES: Any statement of competitor pricing, fees, or feature comparisons (Wealthsimple, Questrade, etc.), including "II charges a flat $20/month" vs. competitor fees.
+KU-6 BEHAVIORAL FINANCE CLAIMS: Any statement attributing underperformance to behavioral patterns, or citing DALBAR, SPIVA, or CSA Investor Index data.
+KU-7 RISK DISCLOSURE BY CHANNEL: Any content where channel-specific risk disclosure requirements are unclear — especially social posts, newsletter content, or email to members.
+KU-8 REAL-TIME SOCIAL ENGAGEMENT: Any content drafted for social media replies or brand account engagement on X/LinkedIn/Instagram.`
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
 const RUN_DATE    = (args && args.runDate) ? args.runDate : '2026-06-01'
@@ -136,6 +250,34 @@ const CONTENT_SCHEMA = {
     aeo_optimised:       { type: 'boolean' },
   },
   required: ['slug','filename','content','keyword','page_type'],
+}
+
+const COMPLIANCE_SCHEMA = {
+  type: 'object',
+  properties: {
+    filename:           { type: 'string' },
+    keyword:            { type: 'string' },
+    verdict:            { type: 'string', enum: ['Likely compliant', 'Needs revision', 'High risk — likely non-compliant'] },
+    risk_summary:       { type: 'string' },
+    issues:             {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          quoted_text:      { type: 'string' },
+          rule_category:    { type: 'string' },
+          concern:          { type: 'string' },
+          suggested_rewrite:{ type: 'string' },
+        },
+        required: ['quoted_text','rule_category','concern','suggested_rewrite'],
+      },
+    },
+    missing_disclosures:  { type: 'string' },
+    escalation_note:      { type: 'string' },
+    supervisor_required:  { type: 'boolean' },
+    revised_content:      { type: 'string' },
+  },
+  required: ['filename','keyword','verdict','risk_summary','issues','escalation_note','supervisor_required','revised_content'],
 }
 
 const RANKING_SCHEMA = {
@@ -541,6 +683,97 @@ log(`✓ Content — ${validDrafts.length} pages written | ${validDrafts.filter(
 
 
 // ══════════════════════════════════════════════════════════════════════════════
+// AGENT 3b — CIRO COMPLIANCE REVIEW (parallel, one agent per page)
+// ══════════════════════════════════════════════════════════════════════════════
+phase('Compliance Review')
+log(`③b CIRO Compliance Review — reviewing all ${validDrafts.length} pages against CIRO Rule 3602...`)
+
+const complianceReviews = await parallel(validDrafts.map((draft, idx) => () =>
+  agent(
+    `${CIRO_COMPLIANCE_PROMPT}
+
+---
+
+Please review the following Orion content page for CIRO Rule 3602 compliance.
+
+FILENAME: ${draft.filename}
+KEYWORD: ${draft.keyword}
+PAGE TYPE: ${draft.page_type}
+AEO OPTIMISED: ${draft.aeo_optimised}
+
+PAGE CONTENT:
+${draft.content}`,
+    {
+      label: `ciro-review-${idx+1}-${draft.keyword.slice(0,25).replace(/\s+/g,'-')}`,
+      phase: 'Compliance Review',
+      schema: COMPLIANCE_SCHEMA,
+    }
+  )
+))
+
+const validReviews = complianceReviews.filter(Boolean)
+
+// Count verdicts
+const verdictCounts = {
+  compliant: validReviews.filter(r => r.verdict === 'Likely compliant').length,
+  needsRevision: validReviews.filter(r => r.verdict === 'Needs revision').length,
+  highRisk: validReviews.filter(r => r.verdict === 'High risk — likely non-compliant').length,
+  supervisorRequired: validReviews.filter(r => r.supervisor_required).length,
+}
+
+// Write revised (compliant) versions to disk, overwriting originals
+await agent(
+  `Overwrite the following files with their compliance-revised content. Use the Write tool for each.
+
+${validReviews.map(r => `
+PATH: ${CONTENT_DIR}\\${r.filename}
+---BEGIN REVISED CONTENT---
+${r.revised_content}
+---END REVISED CONTENT---
+`).join('\n')}
+
+Confirm each file written.`,
+  { label: 'write-revised-content', phase: 'Compliance Review' }
+)
+
+// Write compliance report JSON
+const complianceReportJson = JSON.stringify({
+  generated_at:        `${RUN_DATE}T07:32:00`,
+  run_date:            RUN_DATE,
+  agent:               'orion-ciro-compliance-reviewer-v1',
+  rule:                'CIRO Dealer Member Rule 3602',
+  pages_reviewed:      validReviews.length,
+  verdict_summary:     verdictCounts,
+  pages: validReviews.map(r => ({
+    filename:           r.filename,
+    keyword:            r.keyword,
+    verdict:            r.verdict,
+    risk_summary:       r.risk_summary,
+    issues_count:       r.issues.length,
+    supervisor_required: r.supervisor_required,
+    escalation_note:    r.escalation_note,
+    missing_disclosures: r.missing_disclosures,
+    issues:             r.issues,
+  })),
+}, null, 2)
+
+await agent(
+  `Write this JSON to: ${OUTPUT_DIR}\\compliance_report_${RUN_DATE}.json
+
+${complianceReportJson}
+
+Use the Write tool. Confirm success.`,
+  { label: 'write-compliance-report', phase: 'Compliance Review' }
+)
+
+log(`✓ Compliance Review — ${verdictCounts.compliant} likely compliant | ${verdictCounts.needsRevision} need revision | ${verdictCounts.highRisk} high risk | ${verdictCounts.supervisorRequired} require Supervisor approval`)
+
+// Attach compliance data to validDrafts for use in Jira tickets
+const draftComplianceMap = {}
+for (const r of validReviews) { draftComplianceMap[r.filename] = r }
+
+
+// ══════════════════════════════════════════════════════════════════════════════
 // AGENT 4 — RANKING
 // ══════════════════════════════════════════════════════════════════════════════
 phase('Ranking')
@@ -743,33 +976,52 @@ await parallel([
     `Create ${validDrafts.length} Jira Task tickets in project ${JIRA_PROJECT} using the createJiraIssue tool.
 Cloud ID: ${CLOUD_ID} | Issue type ID: 10002 (Task)
 
-Create one ticket per page:
+Create one ticket per page. Each ticket includes the CIRO compliance verdict from the automated review:
 
-${validDrafts.map((d,i) => `
+${validDrafts.map((d,i) => {
+  const cr = draftComplianceMap[d.filename] || {}
+  const verdict = cr.verdict || 'Pending review'
+  const supervisorFlag = cr.supervisor_required ? '⚠ SUPERVISOR APPROVAL REQUIRED BEFORE PUBLICATION' : ''
+  const issueCount = (cr.issues || []).length
+  const escalation = cr.escalation_note || ''
+  const riskSummary = cr.risk_summary || ''
+  return `
 TICKET ${i+1}:
-Summary: [SEO Review] ${d.keyword} (${d.page_type})
+Summary: [Content Review] ${d.keyword} (${d.page_type})
 Description:
-"Orion pipeline drafted this page on ${RUN_DATE}. Requires compliance, brand, and accuracy review before publishing.
+"Orion pipeline drafted and compliance-reviewed this page on ${RUN_DATE}.
 
 File: output/content_drafts/${RUN_DATE}/${d.filename}
 Keyword: ${d.keyword}
 Page type: ${d.page_type}
 AEO optimised: ${d.aeo_optimised}
 
-REVIEW CHECKLIST:
-□ Financial claims accurate and compliant
-□ Brand voice: sophisticated, not salesy
-□ E-E-A-T: author credentials, citations to Graham/Buffett/SEC filings
+━━━ CIRO RULE 3602 COMPLIANCE REVIEW ━━━
+Automated verdict: ${verdict}
+${supervisorFlag}
+CIRO issues found: ${issueCount}
+Risk summary: ${riskSummary}
+Escalation: ${escalation}
+
+Note: The file has been updated with compliance-revised content. Review the revised version before publishing.
+
+━━━ HUMAN REVIEW CHECKLIST ━━━
+□ CIRO compliance verdict accepted (${verdict})
+${cr.supervisor_required ? '□ ⚠ Supervisor sign-off obtained before publication' : ''}
+□ Brand voice check: sophisticated, not salesy
+□ Financial claims verified for accuracy
+□ E-E-A-T signals present: author credentials, citations (Graham/Buffett/SEC filings)
 □ Direct answer paragraph is quotable by AI assistants (first 50 words)
-□ Internal links to existing Orion pages
-□ Schema markup present at page end
+□ Internal links to existing Orion pages added
+□ JSON-LD schema markup present at page end
 □ Meta title ≤60 chars | description 130–155 chars
+□ Footer disclosure verified present on published page
 
 ON APPROVAL:
 → Create engineering ticket to publish
 → Submit URL to Google Search Console for indexing
 → Update AEO Monitor with published URL on next pipeline run"
-`).join('\n')}
+`}).join('\n')}
 
 Return all created ticket keys (e.g. MKTG-101, MKTG-102...).`,
     { label: 'create-jira-tickets', phase: 'Jira + Confluence' }
@@ -829,10 +1081,18 @@ return {
   gaps:                  insights.gaps,
   top_recommendations:   insights.recommendations,
   executive_summary:     insights.executive_summary,
+  compliance: {
+    pages_reviewed:      verdictCounts.compliant + verdictCounts.needsRevision + verdictCounts.highRisk,
+    likely_compliant:    verdictCounts.compliant,
+    needs_revision:      verdictCounts.needsRevision,
+    high_risk:           verdictCounts.highRisk,
+    supervisor_required: verdictCounts.supervisorRequired,
+  },
   output_files: [
     `output/keyword_brief_${RUN_DATE}.json`,
     `output/aeo_monitor_${RUN_DATE}.json`,
-    `output/content_drafts/${RUN_DATE}/ (${validDrafts.length} pages)`,
+    `output/content_drafts/${RUN_DATE}/ (${validDrafts.length} pages — compliance-revised)`,
+    `output/compliance_report_${RUN_DATE}.json`,
     `output/ranking_report_${RUN_DATE}.json`,
     `output/weekly_report_${RUN_DATE}.md`,
     `queue/next_research_seeds.json`,
