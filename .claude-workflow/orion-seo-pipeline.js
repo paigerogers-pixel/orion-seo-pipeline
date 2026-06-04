@@ -1,16 +1,39 @@
 export const meta = {
   name: 'orion-seo-pipeline',
-  description: 'Full Orion AEO/SEO pipeline — 5 agents + CIRO compliance review + Jira + Confluence',
+  description: 'Full Orion AEO/SEO pipeline — P0 gate, doctrine-aligned, CIRO-reviewed, Edge draft, social queue',
   phases: [
-    { title: 'Research',          detail: 'Live SERP + community keyword discovery and scoring' },
-    { title: 'AEO Monitor',       detail: 'AI assistant visibility audit across 10 ICP queries' },
-    { title: 'Content',           detail: 'Draft 10 publish-ready pages optimised for Google + AI retrieval' },
-    { title: 'Compliance Review', detail: 'CIRO Rule 3602 line-by-line review of every draft before publish' },
-    { title: 'Ranking',           detail: 'GSC position tracking, deltas, and alerts' },
-    { title: 'Insight',           detail: 'Weekly synthesis, report, and next-run seed generation' },
-    { title: 'Jira + Confluence', detail: 'Create content review tickets with compliance verdicts + refresh Confluence page' },
+    { title: 'P0 Gate',           detail: 'Check which foundation pages exist — prioritise missing P0 pages before anything else' },
+    { title: 'Research',          detail: 'Live SERP + Canada-first keyword discovery, scored with opportunity scoring' },
+    { title: 'AEO Monitor',       detail: 'AI visibility audit across 15 ICP queries (Canada-first, 5 AI systems)' },
+    { title: 'Content',           detail: 'Draft pages — P0 gaps first, then P1/P2/P3, doctrine-aligned, 8-section structure' },
+    { title: 'Compliance Review', detail: 'CIRO Rule 3602 + doctrine drift detection across all 6 drift types' },
+    { title: 'Ranking',           detail: 'GSC position tracking, deltas, quick wins, AEO visibility trend' },
+    { title: 'Insight',           detail: 'Weekly synthesis + The Edge draft + categorised seeds for next run' },
+    { title: 'Jira + Confluence', detail: 'Jira tickets + Confluence pipeline page + social media state update' },
   ],
 }
+
+// ─── P0 FOUNDATION PAGES ─────────────────────────────────────────────────────
+// Source: SEO/AEO Agent Flow (Confluence MO1 ID: 3417702418)
+// These 10 pages must exist before any P1/P2/P3 content is published.
+// Every run checks which are missing and drafts them first.
+const P0_FOUNDATION_PAGES = [
+  { slug: 'what-intelligent-investing-is',        title: 'What Intelligent Investing Is',                    keyword: 'what is intelligent investing',                         page_type: 'pillar',   development_stage: 'Awakening',   content_category: '04 Identity' },
+  { slug: 'how-intelligent-investing-works',      title: 'How Intelligent Investing Works',                  keyword: 'how intelligent investing works',                       page_type: 'pillar',   development_stage: 'Commitment',  content_category: '03 Capital Discipline' },
+  { slug: 'pricing-one-app-one-fee',              title: 'Pricing: One App. One Fee.',                       keyword: 'intelligent investing pricing Canada',                  page_type: 'landing',  development_stage: 'Commitment',  content_category: '04 Identity' },
+  { slug: 'regulatory-protection-ciro-cipf',      title: 'Regulatory Protection: CIRO, CIPF, and Custody',  keyword: 'is intelligent investing safe Canada CIRO',             page_type: 'landing',  development_stage: 'Commitment',  content_category: '03 Capital Discipline' },
+  { slug: 'managed-portfolios',                   title: 'Managed Portfolios: S&P 500 DCA',                  keyword: 'managed investing portfolio Canada S&P 500 DCA',       page_type: 'landing',  development_stage: 'Commitment',  content_category: '03 Capital Discipline' },
+  { slug: 'self-directed-investing',              title: 'Self-Directed Investing With a System',            keyword: 'self-directed investing Canada with a system',         page_type: 'pillar',   development_stage: 'Discipline',  content_category: '02 Behavioural Edge' },
+  { slug: 'fiscal-ai-stock-analysis',             title: 'Fiscal AI: AI-Powered Stock Analysis',             keyword: 'Fiscal AI stock analysis Canada',                       page_type: 'landing',  development_stage: 'Discipline',  content_category: '03 Capital Discipline' },
+  { slug: 'sp500-benchmark-comparison',           title: 'S&P 500 Benchmark: Know Where You Stand',          keyword: 'compare investment performance S&P 500 Canada',        page_type: 'landing',  development_stage: 'Discipline',  content_category: '02 Behavioural Edge' },
+  { slug: 'investment-memo-process',              title: 'The Investment Memo: Write It Before You Buy',     keyword: 'investment thesis template Canada',                    page_type: 'pillar',   development_stage: 'Discipline',  content_category: '03 Capital Discipline' },
+  { slug: 'what-we-do-not-do',                   title: 'What We Do Not Do',                                keyword: 'what intelligent investing does not do',               page_type: 'landing',  development_stage: 'Attention',   content_category: '01 System Failure' },
+]
+
+// Social media state page ID — pipeline writes findings here for social agents to consume
+// Source: Social Media Agent Flow (Confluence MO1 ID: 3417407509)
+const SOC_PERFORMANCE_PAGE_ID = '3428450308'
+const EDGE_NEWSLETTER_PAGE_ID = '3417866270'
 
 // ─── COMPLIANCE KNOWN UNKNOWNS ────────────────────────────────────────────
 // 8 areas PENDING guidance from Axl Villapaz (compliance advisor).
@@ -126,7 +149,15 @@ KU-7 RISK DISCLOSURE BY CHANNEL: Any content where channel-specific risk disclos
 KU-8 REAL-TIME SOCIAL ENGAGEMENT: Any content drafted for social media replies or brand account engagement on X/LinkedIn/Instagram.`
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
-const RUN_DATE    = (args && args.runDate) ? args.runDate : '2026-06-01'
+// FIX #2: Run date — use args.runDate if provided, otherwise ask an agent for today's date
+// Never hardcode a fallback date — that caused all outputs to stamp the wrong week
+const _dateResult = (args && args.runDate) ? args.runDate : await agent(
+  `Return today's date in YYYY-MM-DD format. Return only the date string, nothing else.`,
+  { label: 'get-run-date' }
+)
+const RUN_DATE = (typeof _dateResult === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(_dateResult.trim()))
+  ? _dateResult.trim()
+  : (args && args.runDate) || '2026-06-09'
 const OUTPUT_DIR  = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\output'
 const QUEUE_DIR   = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\queue'
 const CONTENT_DIR = `${OUTPUT_DIR}\\content_drafts\\${RUN_DATE}`
@@ -309,12 +340,67 @@ const INSIGHT_SCHEMA = {
     wins:              { type: 'array', items: { type: 'string' }, minItems: 3 },
     gaps:              { type: 'array', items: { type: 'string' }, minItems: 3 },
     recommendations:   { type: 'array', items: { type: 'string' }, minItems: 3 },
-    next_seeds:        { type: 'array', items: { type: 'string' }, minItems: 25 },
     executive_summary: { type: 'string' },
     aeo_progress:      { type: 'string' },
+    // FIX #6: Seeds categorised by content category — not just a flat list
+    next_seeds: {
+      type: 'object',
+      properties: {
+        system_failure:     { type: 'array', items: { type: 'string' }, minItems: 6,  description: '01 System Failure — why most of us underperform, behavioral mistakes, market truths' },
+        behavioural_edge:   { type: 'array', items: { type: 'string' }, minItems: 7,  description: '02 Behavioural Edge — how serious allocators operate, underwriting, calibration' },
+        capital_discipline: { type: 'array', items: { type: 'string' }, minItems: 7,  description: '03 Capital Discipline — position sizing, kill criteria, benchmarking, re-underwriting' },
+        identity:           { type: 'array', items: { type: 'string' }, minItems: 5,  description: '04 Identity — who you are becoming, allocator identity, mastery as direction' },
+      },
+      required: ['system_failure','behavioural_edge','capital_discipline','identity'],
+    },
+    // FIX #3: The Edge draft — one publish-ready edition per weekly run
+    edge_draft: {
+      type: 'object',
+      properties: {
+        subject_line:     { type: 'string', description: 'Severe, direct. States the idea not the benefit. Reducible to one of the five claims. No clickbait.' },
+        preview_text:     { type: 'string', description: 'One sentence. Complements subject line without repeating it.' },
+        hard_claim:       { type: 'string', description: 'The opening line. Declarative, cold, unapologetic. Pulls the reader in.' },
+        system_explanation: { type: 'string', description: 'The body — why this is true, the mechanism behind it, what serious allocators do instead. 120–180 words.' },
+        correction:       { type: 'string', description: 'The close — what changes when you understand this. One short paragraph.' },
+        closing_principle: { type: 'string', description: 'One sentence. The reader carries it forward. Not a CTA — a principle.' },
+        content_category: { type: 'string', enum: ['01 System Failure','02 Behavioural Edge','03 Capital Discipline','04 Identity'] },
+        five_claims_anchor: { type: 'string' },
+        compliance_flag:  { type: 'string', description: 'Any areas that may need Axl review before send' },
+      },
+      required: ['subject_line','hard_claim','system_explanation','correction','closing_principle','content_category'],
+    },
   },
-  required: ['wins','gaps','recommendations','next_seeds','executive_summary'],
+  required: ['wins','gaps','recommendations','next_seeds','executive_summary','edge_draft'],
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// FIX #1 — P0 GATE: Check which foundation pages exist, draft missing ones first
+// Source: SEO/AEO Agent Flow (Confluence MO1 ID: 3417702418)
+// ══════════════════════════════════════════════════════════════════════════════
+phase('P0 Gate')
+log('⓪ P0 Gate — checking which foundation pages exist...')
+
+const p0StatusResult = await agent(
+  `Check which of these P0 foundation pages already exist as files in the directory ${OUTPUT_DIR}\\content_drafts\\ (any subdirectory).
+Use the Glob tool to search for these slugs:
+${P0_FOUNDATION_PAGES.map(p => `- ${p.slug}.md`).join('\n')}
+
+For each slug, return whether the file exists (true/false).
+Return a JSON object: { "slug": true/false, ... }`,
+  { label: 'p0-check', phase: 'P0 Gate' }
+)
+
+// Parse which P0 pages are missing
+let p0Missing = P0_FOUNDATION_PAGES
+try {
+  const existing = JSON.parse((p0StatusResult.match(/\{[\s\S]*\}/) || ['{}'])[0])
+  p0Missing = P0_FOUNDATION_PAGES.filter(p => !existing[p.slug])
+} catch(e) {
+  log('P0 check parse error — will draft all 10 foundation pages')
+}
+
+log(`P0 status: ${P0_FOUNDATION_PAGES.length - p0Missing.length}/${P0_FOUNDATION_PAGES.length} foundation pages exist | ${p0Missing.length} missing`)
 
 // ══════════════════════════════════════════════════════════════════════════════
 // AGENT 1 — RESEARCH
@@ -594,14 +680,29 @@ const kwQueue = sortedKeywords
     score:           k.score,
   }))
 
+// FIX #1: P0 pages go to front of queue — foundation before everything else
+const p0Queue = p0Missing.slice(0, 3).map(p => ({
+  keyword:         p.keyword,
+  page_type:       p.page_type,
+  aeo_flag:        true,
+  development_stage: p.development_stage,
+  content_category:  p.content_category,
+  competitors:     [],
+  suggested_title: p.title,
+  source:          'p0_foundation',
+  score:           100,
+  page_priority:   'P0',
+}))
+
 const seen = new Set()
 const contentQueue = []
-for (const item of [...aeoQueue, ...kwQueue]) {
+// Order: P0 missing → AEO gaps → keyword brief
+for (const item of [...p0Queue, ...aeoQueue, ...kwQueue]) {
   const key = item.keyword.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,60)
   if (!seen.has(key) && contentQueue.length < 10) { seen.add(key); contentQueue.push(item) }
 }
 
-log(`Queue: ${aeoQueue.length} AEO gap pages + ${contentQueue.length - aeoQueue.length} keyword pages`)
+log(`Queue: ${p0Queue.length} P0 foundation | ${aeoQueue.length} AEO gap | ${contentQueue.length - p0Queue.length - aeoQueue.length} keyword pages`)
 
 const PAGE_INSTRUCTIONS = {
   pillar: `PILLAR PAGE (1800–2200 words): 6-8 H2 sections each with 2-3 H3s. Exhaustive — the definitive resource. Strong E-E-A-T: cite specific data, reference Graham/Buffett by name. Internal link opportunities.`,
@@ -865,17 +966,35 @@ Alerts: ${rankingReport.alerts.join(' | ')}
 Quick wins: ${(rankingReport.quick_wins||[]).join(', ')}
 
 PRODUCE (be specific — use real keyword names and numbers from the data):
-1. wins (3 bullets): What was built and why it matters
-2. gaps (3 bullets): What's missing, what risks exist — be honest
+
+1. wins (3 bullets): What was built and why it matters — specific keyword names and numbers
+2. gaps (3 bullets): What's missing, what risks exist — be honest. Use "most of us" language.
 3. recommendations (3 bullets): Highest-leverage actions for next week with exact keyword/page names
-4. next_seeds (exactly 25): Mix of:
-   - 8 competitor displacement terms (e.g. "GuruFocus alternative for value investors")
-   - 6 calculator/tool terms (e.g. "Graham number calculator online")
-   - 5 ICP-voice questions from community research
-   - 4 trending 2026 angles
-   - 2 branded/navigational terms
-5. executive_summary: 3–4 sentences for sharing with the team
-6. aeo_progress: 1–2 sentences on AEO trajectory`,
+4. executive_summary: 3–4 sentences for sharing with the team — doctrine-aligned, no forbidden words
+5. aeo_progress: 1–2 sentences on AEO visibility trajectory
+
+6. next_seeds — FIX #6: Categorise by the 4 content categories (source: II Content Operations MO1 ID: 3409477650):
+   system_failure (6 seeds): queries about why most of us underperform, behavioral mistakes, market truths
+     e.g. "why do I keep making the same investing mistakes", "why overtrading hurts returns Canada"
+   behavioural_edge (7 seeds): queries about how serious allocators operate differently
+     e.g. "how to write an investment memo Canada", "what is a kill line in investing"
+   capital_discipline (7 seeds): mechanics of serious allocation — position sizing, benchmarking, kill criteria
+     e.g. "how to benchmark investment performance Canada", "position sizing rules value investing"
+   identity (5 seeds): allocator identity, who you are becoming, mastery
+     e.g. "what kind of investor do I want to become", "how to develop as an allocator"
+
+7. edge_draft — FIX #3: Draft The Edge newsletter edition for this week
+   Source: The Edge Newsletter operations (Confluence MO1 ID: 3417866270)
+   Rules:
+   - No greeting ever. No sign-off implying conversation.
+   - One idea only. Hard opening. Three-part structure: Hard Claim → System Explanation → Correction.
+   - Subject line: state the idea not the benefit. Severe, direct. Reducible to one of the five claims.
+   - Voice: cold, clinical, declarative. "Most of us" — never "most investors."
+   - No forbidden words. No urgency. No exclamation marks.
+   - Closing principle: one sentence the reader carries forward. Not a CTA.
+   - Content category: one of the 4 (01 System Failure / 02 Behavioural Edge / 03 Capital Discipline / 04 Identity)
+   - compliance_flag: note any areas that may need Axl's review before send (KU-1 through KU-8)
+   Base the edition on the most important insight from this week's pipeline data.`,
   { label: 'insight-synthesis', phase: 'Insight', schema: INSIGHT_SCHEMA }
 )
 
@@ -954,14 +1073,24 @@ Use Write tool. Confirm success.`,
   () => agent(
     `Write this JSON to: ${QUEUE_DIR}\\next_research_seeds.json
 
-${JSON.stringify({ generated_at: `${RUN_DATE}T07:50:00`, run_date: RUN_DATE, seeds: insights.next_seeds, seed_count: insights.next_seeds.length, source: 'insight_agent_v2' }, null, 2)}
+${JSON.stringify({
+  generated_at: `${RUN_DATE}T07:50:00`,
+  run_date:     RUN_DATE,
+  source:       'insight_agent_v2',
+  // FIX #6: Categorised seeds — Research Agent loads these and maps to content categories
+  seeds_by_category: insights.next_seeds,
+  // Flat list for backward compatibility with Research Agent seed loading
+  seeds: Object.values(insights.next_seeds).flat(),
+  seed_count: Object.values(insights.next_seeds).flat().length,
+}, null, 2)}
 
 Use Write tool. Confirm success.`,
     { label: 'write-seeds', phase: 'Insight' }
   ),
 ])
 
-log(`✓ Insight — weekly report written | ${insights.next_seeds.length} seeds queued`)
+const totalSeeds = Object.values(insights.next_seeds).flat().length
+log(`✓ Insight — weekly report written | ${totalSeeds} seeds queued (categorised by content type) | Edge draft ready`)
 
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1059,7 +1188,76 @@ ${aeoResults.highest_priority_gaps.map(q=>`   - "${q}"`).join('\n')}`,
 
 ])
 
-log(`✓ Jira + Confluence — ${validDrafts.length} tickets created | Confluence updated`)
+// FIX #4: Write pipeline findings to Social Media performance state page
+// Source: Social Media Agent Flow (Confluence MO1 ID: 3417407509)
+// The social agents read from this machine-readable state to inform content concepts
+await agent(
+  `Update the Confluence page ID ${SOC_PERFORMANCE_PAGE_ID} on cloud ${CLOUD_ID} using the updateConfluencePage tool.
+Title: "SOC — Performance Summary"
+contentFormat: "html"
+versionMessage: "Pipeline auto-update — ${RUN_DATE}"
+
+Replace the entire body with this machine-readable state (social agents read this):
+
+<h2>Pipeline state — <time datetime="${RUN_DATE}">${RUN_DATE}</time></h2>
+<div data-type="panel-info"><p>Auto-written by SEO/AEO pipeline every Monday. Social agents read this to inform weekly content concepts. Do not edit manually.</p></div>
+<h3>AEO gaps to address in social content this week</h3>
+<ul>${aeoResults.highest_priority_gaps.map(q => `<li><p>${q}</p></li>`).join('')}</ul>
+<h3>Quick wins to amplify (already gaining traction)</h3>
+<ul>${(rankingReport.quick_wins||[]).map(q => `<li><p>${q}</p></li>`).join('')}</ul>
+<h3>Top competitors in AI responses this week</h3>
+<ul>${aeoResults.top_competitors.slice(0,4).map(c => `<li><p>${c}</p></li>`).join('')}</ul>
+<h3>Weekly insight for social content</h3>
+<p>${insights.executive_summary}</p>
+<h3>The Edge draft subject line this week</h3>
+<p><strong>${insights.edge_draft.subject_line}</strong></p>
+<h3>AEO visibility rate</h3>
+<p>${aeoResults.orion_visibility_rate}% (target: 40% by week 8)</p>
+<h3>Raw seed ideas by content category</h3>
+<p><strong>01 System Failure:</strong> ${(insights.next_seeds.system_failure||[]).slice(0,3).join(' · ')}</p>
+<p><strong>02 Behavioural Edge:</strong> ${(insights.next_seeds.behavioural_edge||[]).slice(0,3).join(' · ')}</p>
+<p><strong>03 Capital Discipline:</strong> ${(insights.next_seeds.capital_discipline||[]).slice(0,3).join(' · ')}</p>
+<p><strong>04 Identity:</strong> ${(insights.next_seeds.identity||[]).slice(0,3).join(' · ')}</p>`,
+  { label: 'update-social-state', phase: 'Jira + Confluence' }
+)
+
+// FIX #3: Write The Edge draft to a dated section on the newsletter page
+// Tarsila reviews before send. Must not be published without Axl + Saad sign-off.
+const edgeDraft = insights.edge_draft
+await agent(
+  `On Confluence page ID ${EDGE_NEWSLETTER_PAGE_ID} (cloud ${CLOUD_ID}), add a child note or comment using createConfluenceFooterComment with the following content.
+Actually — use createConfluencePage to create a NEW child page under parent ${EDGE_NEWSLETTER_PAGE_ID}.
+
+Title: "Draft Edition — ${RUN_DATE}"
+cloudId: ${CLOUD_ID}
+spaceId: 3409674244
+parentId: ${EDGE_NEWSLETTER_PAGE_ID}
+contentFormat: html
+
+Body:
+<div data-type="panel-warning"><p>DRAFT — requires Axl + Saad sign-off before send. ${edgeDraft.compliance_flag ? `Compliance flag: ${edgeDraft.compliance_flag}` : 'No specific compliance flags noted — standard KU holds apply.'}</p></div>
+<table>
+<thead><tr><th>Field</th><th>Content</th></tr></thead>
+<tbody>
+<tr><td><strong>Subject line</strong></td><td>${edgeDraft.subject_line}</td></tr>
+<tr><td><strong>Preview text</strong></td><td>${edgeDraft.preview_text || '—'}</td></tr>
+<tr><td><strong>Content category</strong></td><td>${edgeDraft.content_category}</td></tr>
+<tr><td><strong>Five claims anchor</strong></td><td>${edgeDraft.five_claims_anchor || '—'}</td></tr>
+</tbody>
+</table>
+<h2>Hard claim</h2>
+<p><strong>${edgeDraft.hard_claim}</strong></p>
+<h2>System explanation</h2>
+<p>${edgeDraft.system_explanation}</p>
+<h2>Correction</h2>
+<p>${edgeDraft.correction}</p>
+<h2>Closing principle</h2>
+<p><em>${edgeDraft.closing_principle}</em></p>
+<hr/><p><em>Generated by SEO/AEO pipeline ${RUN_DATE}. Review against doctrine before send: no forbidden words, "most of us" voice, reduces to one of the five claims.</em></p>`,
+  { label: 'write-edge-draft', phase: 'Jira + Confluence' }
+)
+
+log(`✓ Jira + Confluence — ${validDrafts.length} tickets | Confluence updated | Social state written | Edge draft created`)
 log('━━━ Pipeline complete ━━━')
 
 
@@ -1076,7 +1274,7 @@ return {
   content_pages_drafted: validDrafts.length,
   keywords_tracked:      rankingReport.gsc_summary.keywords_tracked,
   quick_wins:            rankingReport.quick_wins || [],
-  next_seeds_queued:     insights.next_seeds.length,
+  next_seeds_queued:     Object.values(insights.next_seeds).flat().length,
   wins:                  insights.wins,
   gaps:                  insights.gaps,
   top_recommendations:   insights.recommendations,
