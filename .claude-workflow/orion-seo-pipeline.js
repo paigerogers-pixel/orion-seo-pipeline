@@ -40,9 +40,55 @@ The allocator is the product. The portfolio is the artifact. The system is the e
 
   status_we_reject: ['activity', 'prediction', 'confidence', 'speed', 'trading', 'participation', 'wealth signaling'],
 
-  content_categories: ['Reality', 'Process', 'Judgment', 'Capital Allocation', 'Market Structure'],
+  // Source: II — Content Operations (Confluence MO1, ID: 3409477650)
+  content_categories: ['01 System Failure', '02 Behavioural Edge', '03 Capital Discipline', '04 Identity'],
 
-  voice: `Cold. Clinical. Declarative. Willing. We say what others in the category are unwilling to say. We do not perform certainty. We do not perform expertise. We do not perform superiority. The most important word in our vocabulary is "us" not "them". Always say "Most of us" — never "Most investors".`,
+  // Source: II — Strategic Doctrine (MO1, ID: 3417767948) + Brand Guidelines (ID: 3428679682)
+  what_ii_is_not: `A brokerage. A robo-advisor. A content platform. An AI investing app. Not a Wealthsimple competitor — a Wealthsimple successor. Wealthsimple is where investors learn that activity feels like progress. We are where they go when activity stops feeling like progress.`,
+
+  icp_stages: `
+    Launch sequence (not a filter — build status with early adopters, let it flow outward):
+    1. Upstream Active Speculator (~1.2M Canadians, age 25–38, $5K–$20K invested, over-trading, platform: Questrade or Wealthsimple)
+    2. Primary Confused Improver (~1.5–2M Canadians, age 28–42, $25K–$250K, 5–15 trades/quarter, no clear system, pain: "I don't know if what I'm doing is right")
+    3. Downstream Aspiring Disciplined (~400–600K Canadians, age 32–48, $75K+, pattern-recognition, ready for a system)
+    Primary ICP for content: Confused Improver.`,
+
+  constitutional_commitments: `
+    - Flat subscription only — no AUM fees, no performance fees, no transaction fees ever
+    - Truth surfaces never softened for retention or growth
+    - No outperformance claims, no prediction claims, no market call claims ever
+    - Never make price comparisons publicly — users discover value themselves
+    - Status signals are behavioral, never wealth-based`,
+
+  forbidden_words: `NEVER USE: elite, exclusive, premium, luxury, smart money, beat the market, alpha, outperform, outperformance, expert picks, proven strategy, guaranteed, best returns, market-beating, stock tips, hot stocks, buy signal, must-buy, can't miss. Never exclamation marks. Never emoji. Never urgency language. Never reassurance language.`,
+
+  standard_page_structure: `
+    Every page must follow this exact 8-section structure:
+    1. DIRECT ANSWER (40–60 words): Crisp, standalone, mentions II naturally. This is what AI assistants quote verbatim.
+    2. WHY IT MATTERS: Context for the Confused Improver. What is at stake.
+    3. WHAT MOST OF US GET WRONG: The honest truth. Use "most of us" not "most investors."
+    4. THE OPERATIONAL RESPONSE: What serious allocators actually do. Concrete, not theoretical.
+    5. HOW II ADDRESSES IT: Product tie-in — natural, never a hard sell. Describe the system, not a feature list.
+    6. WHAT II DOES NOT CLAIM: A brief honest statement of limitations. This is non-negotiable.
+    7. CANADIAN TRUST CONTEXT: Regulatory context (CIRO member, CIPF protected), Canadian market specifics where relevant.
+    8. FAQ BLOCK: 4–5 Q&As covering related long-tail + PAA queries. Schema-marked.`,
+
+  approved_ctas: `
+    APPROVED CTAs (use only these, verbatim):
+    - "Proceed deliberately."
+    - "See the system."
+    - "Compare decisions to the benchmark."
+    - "Review the process."
+    - "Understand the fee structure."
+    NEVER USE: "Start beating the market today", "Become a smarter investor", "Join thousands of successful investors", "Try it free", "Unlock your potential", "Get started", "Sign up now"`,
+
+  post_structure: `Every post (social or content) follows: Hard Claim → System Explanation → Correction.`,
+
+  high_status_test: `Before publishing, reject if it: tries to persuade, reassures, explains too much, or feels friendly. The audience is an adult. Treat them like one.`,
+
+  wealthsimple_rule: `Wealthsimple is never an adversary in public. It is a stage. The recruiting moment is "I do not want to repeat that mistake again" — not aspirational. Never reference competitor pricing publicly. Users discover the value themselves.`,
+
+  voice: `Cold. Clinical. Declarative. Willing. We say what others in the category are unwilling to say. We do not perform certainty. We do not perform expertise. We do not perform superiority. The most important word in our vocabulary is "us" not "them". Always say "Most of us" — never "Most investors". Numbers lead. No exclamation marks. No emoji. No urgency.`,
 
   recruiting_motions: {
     reactive: 'The person has already been humbled. Psychology: I do not want to repeat that mistake.',
@@ -77,35 +123,66 @@ const CLOUD_ID           = '7830fa63-7783-433f-b6d1-84e8c6995068'
 const CONFLUENCE_PAGE_ID = '3420782599'
 const JIRA_PROJECT       = 'MKTG'
 
+// Source: SEO/AEO — Automated Agent Flow (Confluence MO1, ID: 3417702418)
+// Canada-first ICP seeds — Confused Improver (28–42, Wealthsimple/Questrade users)
 const DEFAULT_SEEDS = [
+  // Core II brand terms
   'intelligent investing',
-  'beat the S&P 500',
-  'value investing for beginners',
-  'how to find undervalued stocks',
-  'best stock screener value investors',
+  'what is intelligent investing',
+  'intelligent investing platform Canada',
+  // Pain-point entry (Confused Improver)
+  'how do I know if my investing is working',
+  'why do I keep losing money investing',
+  'what is a good return on investment Canada',
+  'am I a good investor',
+  'how to stop overtrading',
+  // System / process terms
+  'investment thesis template',
+  'how to write an investment memo',
   'intrinsic value calculator',
-  'Warren Buffett investing strategy',
   'margin of safety investing',
-  'portfolio management software investors',
-  'value investing tools 2026',
   'DCF calculator stock',
   'Benjamin Graham formula',
-  'AI investing platform',
-  'superinvestor portfolio tracker',
-  'how to analyse a stock fundamentally',
+  'kill line investing',
+  // Wealthsimple/Questrade alternative (organic discovery — never public comparisons)
+  'Wealthsimple alternative for serious investors',
+  'Questrade alternative long-term investing',
+  'self-directed investing platform Canada',
+  // S&P benchmark
+  'compare my portfolio to S&P 500',
+  'how to benchmark investment performance',
+  // Value investing
+  'value investing for beginners Canada',
+  'how to find undervalued stocks',
+  'Warren Buffett investing strategy',
+  // AI investing
+  'AI investing platform Canada',
+  'Fiscal AI stock analysis',
 ]
 
+// Source: SEO/AEO — Automated Agent Flow (Confluence MO1, ID: 3417702418)
+// These 15 prompts are run across Claude, ChatGPT, Perplexity, Gemini, and Google AI Overviews weekly
 const ICP_QUERIES = [
-  'What is the best platform for value investing research?',
-  'How do I find undervalued stocks using fundamental analysis?',
-  'What tools do value investors use to beat the S&P 500?',
-  'What is intelligent investing?',
-  "What's the best stock screener for value investors?",
-  'How can I invest like Warren Buffett?',
-  'What software helps with stock portfolio management for long-term investors?',
-  'What are the best resources for learning value investing?',
-  'How do I calculate the intrinsic value of a stock?',
-  'What platforms compete with Bloomberg Terminal for retail investors?',
+  // Decision uncertainty
+  'What is the best investing platform in Canada for disciplined investors?',
+  'How do I know if I am actually a good investor?',
+  'What is the difference between investing and speculating?',
+  // Benchmark anxiety
+  'How do I compare my investment performance to the S&P 500?',
+  'What is a realistic return for a self-directed investor in Canada?',
+  'Am I beating the market or just getting lucky?',
+  // Platform dissatisfaction
+  'What is a good alternative to Wealthsimple for serious long-term investors?',
+  'What investing platforms do serious Canadian investors use?',
+  'What is Intelligent Investing and how does it work?',
+  // Discipline-seeking
+  'How do I write an investment thesis for a stock?',
+  'What is a kill line in investing?',
+  'How do serious investors use margin of safety?',
+  // Trust and system
+  'What is the safest investing platform in Canada?',
+  'How do I build a disciplined long-term investing process?',
+  'What does a fully activated investing system look like?',
 ]
 
 // ─── SCHEMAS ──────────────────────────────────────────────────────────────
@@ -130,12 +207,24 @@ const KEYWORD_SCHEMA = {
           score:              { type: 'number' },
           source:             { type: 'string' },
           serp_features:      { type: 'string' },
-          // ── Dave Feller doctrine fields ──────────────────────────────────
+          // ── Dave Feller doctrine fields ───────────────────────────────────
           development_stage:  { type: 'string', enum: ['Attention','Awakening','Commitment','Discipline','Mastery'] },
           recruiting_motion:  { type: 'string', enum: ['reactive','anticipatory'] },
-          content_category:   { type: 'string', enum: ['Reality','Process','Judgment','Capital Allocation','Market Structure'] },
+          // Source: II — Content Operations (MO1 ID: 3409477650) — exact 4 categories
+          content_category:   { type: 'string', enum: ['01 System Failure','02 Behavioural Edge','03 Capital Discipline','04 Identity'] },
           five_claims_anchor: { type: 'string' },
           doctrine_note:      { type: 'string' },
+          // ── Opportunity scoring (Source: SEO/AEO Agent Flow, MO1 ID: 3417702418) ──
+          // Each dimension 0–5, compliance/brand risk subtracted
+          opportunity_intent_fit:       { type: 'number' }, // does query signal a Confused Improver?
+          opportunity_icp_fit:          { type: 'number' }, // does it match the 3 ICP stage profiles?
+          opportunity_product_fit:      { type: 'number' }, // can II actually address this query?
+          opportunity_aeo_gap:          { type: 'number' }, // is II invisible in AI responses for this?
+          opportunity_conversion_prox:  { type: 'number' }, // how close to a paid conversion decision?
+          opportunity_compliance_risk:  { type: 'number' }, // risk of CIRO issues (subtract)
+          opportunity_brand_drift_risk: { type: 'number' }, // risk of doctrine drift (subtract)
+          opportunity_score:            { type: 'number' }, // final: sum of above (max 25, min 0)
+          page_priority:                { type: 'string', enum: ['P0','P1','P2','P3'] }, // P0=foundation, P1=pain, P2=comparison, P3=AEO definition
         },
         required: ['keyword','intent','aeo_flag','page_type','score','development_stage','recruiting_motion','content_category'],
       },
@@ -370,33 +459,49 @@ ${trendData}
 ═══ SEEDS ═══
 ${seeds.slice(0,20).join(', ')}
 
-SEO SCORING FORMULA:
+SEO SCORING FORMULA (score field, 0–100):
 score = volume_component(0–40)      // log-scale: 100/mo=13, 1k/mo=27, 10k/mo=40
       + intent_weight × 20          // commercial=1.4, informational=1.0, navigational=0.8
       + aeo_bonus(0–15)             // +15 if question-form, definitional, or "how to"
-      + relevance_to_orion × 20     // 0.0–1.0 ICP fit
+      + relevance_to_orion × 20     // 0.0–1.0 ICP fit (Canadian Confused Improver = 1.0)
       - difficulty_penalty(0–10)    // linear 0–100 difficulty
-      + serp_boost(0–5)             // +5 if featured snippet or PAA confirmed
+      + serp_boost(0–5)             // +5 if featured snippet or PAA confirmed in Canada
+
+OPPORTUNITY SCORING FORMULA (opportunity_score field, 0–25):
+Source: SEO/AEO Agent Flow (Confluence MO1 ID: 3417702418)
+opportunity_score = intent_fit(0–5)        // signals a Confused Improver searching for a system?
+                  + icp_fit(0–5)           // matches stage 1/2/3 ICP profile (Canadian)?
+                  + product_fit(0–5)       // can II concretely address this with the product?
+                  + aeo_gap(0–5)           // is II invisible in AI responses for this query?
+                  + conversion_prox(0–5)   // proximity to paid conversion decision
+                  - compliance_risk(0–5)   // CIRO Rule 3602 risk exposure
+                  - brand_drift_risk(0–5)  // guru/activity/status/pronoun drift risk
+
+PAGE PRIORITY:
+Source: SEO/AEO Agent Flow (Confluence MO1 ID: 3417702418)
+P0 = Foundation (must exist before anything else): "What Intelligent Investing Is," "How II Works," "Pricing: One App. One Fee.," CIRO/CIPF/Custody, Managed Portfolios, Self-Directed Investing, Fiscal.ai, S&P Benchmark Comparison, Investment Memo, "What We Do Not Do"
+P1 = ICP pain pages (Confused Improver entry — Awakening/Attention stage)
+P2 = Comparison pages (Wealthsimple/Questrade alternatives — Commitment stage, never public price comparisons)
+P3 = AEO definition pages (definitional queries for AI retrieval — all stages)
 
 DOCTRINE MAPPING (required for every keyword):
 
 development_stage: Which stage of allocator development does this keyword attract?
-  - Attention: person encounters a contradiction / uncomfortable truth (e.g. "why do most investors underperform")
-  - Awakening: person questions assumptions, recognizes investing is a judgment discipline (e.g. "what is allocator development")
-  - Commitment: person choosing a different way of operating (e.g. "how to start value investing systematically")
-  - Discipline: person adopting systems — underwriting, sizing, calibration (e.g. "how to write an investment thesis")
-  - Mastery: continuous improvement, compounding judgment (e.g. "how to review investment mistakes")
+  - Attention: encounters a contradiction / uncomfortable truth (e.g. "why do most of us underperform")
+  - Awakening: questions assumptions, sees investing as a judgment discipline (e.g. "what is intelligent investing")
+  - Commitment: choosing a different way of operating (e.g. "how to start systematic investing Canada")
+  - Discipline: adopting systems — underwriting, sizing, calibration (e.g. "how to write an investment thesis")
+  - Mastery: continuous improvement, compounding judgment (e.g. "how to review investment mistakes honestly")
 
 recruiting_motion: Who is this keyword for?
-  - reactive: person already been humbled by markets (panic sell, speculation loss, position sizing mistake)
-  - anticipatory: person who recognizes they are vulnerable to being humbled, wants a system first
+  - reactive: person already been humbled (panic sell, speculation loss, "I keep making the same mistake")
+  - anticipatory: person who recognizes vulnerability, wants a system before reality teaches the lesson
 
-content_category: Which doctrine category does this fall into?
-  - Reality: behavioral mistakes, investor psychology, market truths, allocator development
-  - Process: underwriting, position sizing, disconfirming evidence, re-underwriting, benchmarking
-  - Judgment: independent thinking, calibration, decision quality, probabilistic thinking
-  - Capital Allocation: portfolio construction, allocation frameworks, opportunity cost, allocator behavior
-  - Market Structure: industry incentives, financial media, wealth management, AI investing, speculation culture
+content_category: Source: II — Content Operations (Confluence MO1 ID: 3409477650)
+  - 01 System Failure: what the current investing system produces (behavioral mistakes, why most of us underperform)
+  - 02 Behavioural Edge: how the few who endure operate (underwriting, calibration, discipline, process)
+  - 03 Capital Discipline: mechanics of serious allocation (position sizing, kill criteria, benchmarking, re-underwriting)
+  - 04 Identity: who you are becoming as an allocator (identity shift, status, mastery as direction)
 
 five_claims_anchor: Which of the five claims does this keyword best support?
   1. "The market humbles everyone."
@@ -464,31 +569,38 @@ phase('AEO Monitor')
 log('② AEO Monitor — auditing AI visibility across 10 ICP queries...')
 
 const aeoResults = await agent(
-  `You are the AEO Monitor for Orion — an intelligent investing platform built on Benjamin Graham's principles, with AI-powered screening.
+  `You are the AEO Monitor for Intelligent Investing (II) — a Canadian investing platform that makes the discipline of serious capital allocation operationally accessible to individual investors. II is a CIRO member firm. The product: managed S&P 500 DCA portfolio + self-directed investing with structured process tools (investment memos, kill lines, S&P benchmarking, Fiscal AI analysis).
 
-Your job: audit what AI assistants (Claude, ChatGPT) genuinely say today for each ICP query. Be honest — Orion is a newer platform and almost certainly not mentioned yet.
+Source: SEO/AEO — Automated Agent Flow (Confluence MO1, ID: 3417702418)
 
-Known competitors: GuruFocus, Morningstar, Bloomberg Terminal, Simply Wall St, TIKR, Koyfin, Finviz, StockAnalysis.com, Value Investor Club.
+Your job: simulate what the five major AI systems (Claude, ChatGPT, Perplexity, Gemini, Google AI Overviews) currently say for each of the 15 ICP queries. Be honest — II is a newer platform and almost certainly not mentioned. The baseline is the baseline. Knowing it precisely is the only way to improve it.
 
-For EACH of the 10 queries:
-1. Write the TYPICAL AI RESPONSE (3–5 sentences, exactly what Claude/ChatGPT says — realistic, not aspirational)
-2. List competitors cited by name
-3. State whether Orion is mentioned (honest answer — almost certainly false)
-4. Identify the specific content gap — what Orion must publish to get cited
-5. Write the SUGGESTED TITLE for that page (exact, SEO-optimised)
-6. Set priority: high = competitor cited + high volume, medium = gap exists, low = low priority
+CONTEXT ABOUT THE ICP:
+The primary ICP is the Confused Improver (28–42, Canadian, $25K–$250K invested, currently using Wealthsimple or Questrade, 5–15 trades/quarter, no clear system, primary pain: "I don't know if what I'm doing is right"). They are not looking for stock tips. They are looking for a system.
 
-THE 10 QUERIES:
+KNOWN COMPETITORS (Canadian context first):
+Wealthsimple, Questrade, Qtrade, Moka, Passiv, BMO InvestorLine — then international: GuruFocus, Morningstar, Simply Wall St, TIKR, Koyfin, Finviz, StockAnalysis.com.
+
+II SIGNAL TERMS (if any AI mentions these, II is being cited):
+"Intelligent Investing," "II platform," "investment memo platform," "kill line investing," "Fiscal AI," "S&P benchmark comparison Canada."
+
+For EACH of the 15 queries:
+1. TYPICAL AI RESPONSE: what Claude/ChatGPT/Perplexity actually says (3–5 sentences, honest simulation — no wishful thinking)
+2. COMPETITORS CITED: by name, Canadian competitors first
+3. II MENTIONED: boolean — almost certainly false
+4. CONTENT GAP: what specific page II must publish to get cited on this query
+5. SUGGESTED TITLE: exact page title, SEO-optimised, doctrine-aligned (no forbidden words)
+6. PRIORITY: high = Canadian competitor cited + Confused Improver intent, medium = gap exists, low = tangential
+
+THE 15 ICP QUERIES:
 ${ICP_QUERIES.map((q,i) => `${i+1}. "${q}"`).join('\n')}
 
 ALSO PRODUCE:
-- orion_visibility_rate: % of queries where Orion is mentioned
-- top_competitors: ranked by frequency across all 10 responses
-- competitor_frequency: { "CompetitorName": count } for all competitors seen
-- highest_priority_gaps: top 5 queries to target first (impact × urgency)
-- strategic_summary: 2–3 sentences on the AEO landscape and Orion's fastest path to visibility
-
-Be ruthlessly honest. The baseline is the baseline — knowing it precisely is the only way to improve it.`,
+- orion_visibility_rate: % of queries where II is mentioned
+- top_competitors: ranked by frequency, Canadian platforms first
+- competitor_frequency: { "CompetitorName": count } across all 15 responses
+- highest_priority_gaps: top 5 queries to target first (Confused Improver intent × II product fit)
+- strategic_summary: 2–3 sentences on the AEO landscape and II's fastest path to visibility in Canadian AI responses`,
   { label: 'aeo-audit', phase: 'AEO Monitor', schema: AEO_SCHEMA }
 )
 
@@ -659,21 +771,41 @@ The first paragraph must be a 40–60 word direct answer — the paragraph AI as
 - Doctrine-compliant: reinforces the allocator identity, not the "winning investor" identity
 ` : ''}
 
+═══════════════════════════════════════════════
+FORBIDDEN WORDS — if any appear, the draft fails
+═══════════════════════════════════════════════
+elite, exclusive, premium, luxury, smart money, beat the market, alpha, outperform, outperformance, expert picks, proven strategy, guaranteed, best returns, market-beating, stock tips, hot stocks, buy signal, must-buy, can't miss, unlock your potential, become a smarter investor, join thousands, start now, sign up today
+
+═══════════════════════════════════════════════
+APPROVED CTAs — use only one of these, verbatim
+═══════════════════════════════════════════════
+"Proceed deliberately." / "See the system." / "Compare decisions to the benchmark." / "Review the process." / "Understand the fee structure."
+NEVER: "Get started," "Try it free," "Sign up now," "Start investing today"
+
+═══════════════════════════════════════════════
+MANDATORY 8-SECTION PAGE STRUCTURE
+Source: SEO/AEO Agent Flow (Confluence MO1 ID: 3417702418)
+═══════════════════════════════════════════════
 REQUIRED PAGE STRUCTURE:
 1. YAML frontmatter:
-   - title (≤60 chars, includes keyword)
-   - description (130–155 chars, includes keyword, compelling — make people think "that's true")
+   - title (≤60 chars, includes keyword, no forbidden words)
+   - description (130–155 chars, includes keyword — make people think "that's true")
    - keyword: "${item.keyword}"
    - page_type: ${item.page_type}
    - development_stage: ${item.development_stage || 'Awakening'}
    - recruiting_motion: ${item.recruiting_motion || 'anticipatory'}
-   - content_category: ${item.content_category || 'Reality'}
+   - content_category: ${item.content_category || '02 Behavioural Edge'}
    - aeo_optimised: ${item.aeo_flag}
    - run_date: ${RUN_DATE}
-2. ${item.aeo_flag ? 'Direct answer paragraph (40–60 words, doctrine-compliant)' : 'Opening that creates recognition — "That\'s true. I knew it. I\'d never seen it expressed this clearly."'}
-3. Body per page type instructions — use "Most of us" language throughout, elevate status of discipline and process
-4. FAQ block (4–5 Q&As: related long-tail + PAA queries — doctrine-compliant, no guru drift)
-5. JSON-LD schema at end (Article + FAQPage)
+2. DIRECT ANSWER (40–60 words): standalone, AI-quotable, names II naturally
+3. WHY IT MATTERS: what is at stake for a Confused Improver who doesn't know if they're doing it right
+4. WHAT MOST OF US GET WRONG: honest truth, use "most of us," reference behavioral patterns
+5. THE OPERATIONAL RESPONSE: what serious allocators actually do — concrete, specific
+6. HOW II ADDRESSES IT: the system, not a feature list. Never a hard sell.
+7. WHAT II DOES NOT CLAIM: 1–2 honest sentences on limitations. Non-negotiable.
+8. CANADIAN TRUST CONTEXT: CIRO member firm, CIPF protected, Canadian market context (1 short paragraph)
+9. FAQ BLOCK (4–5 Q&As: long-tail + PAA, doctrine-compliant, no guru drift)
+10. JSON-LD schema (Article + FAQPage)
 
 After writing the content, return the doctrine compliance check:
 - drift_check_passed: true only if NONE of the 6 drift types are present
