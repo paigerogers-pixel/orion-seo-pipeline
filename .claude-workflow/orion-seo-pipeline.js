@@ -130,6 +130,23 @@ const CONTENT_DIR = `${OUTPUT_DIR}\\content_drafts\\${RUN_DATE}`
 const CLOUD_ID           = '7830fa63-7783-433f-b6d1-84e8c6995068'
 const CONFLUENCE_PAGE_ID = '3420782599'
 const JIRA_PROJECT       = 'MKTG'
+const SOC_PERFORMANCE_PAGE_ID = '3428450308'
+const EDGE_NEWSLETTER_PAGE_ID = '3417866270'
+
+// P0 foundation pages — must exist before any P1/P2/P3 content is published
+// Source: SEO/AEO Agent Flow (Confluence MO1 ID: 3417702418)
+const P0_FOUNDATION_PAGES = [
+  { slug: 'what-intelligent-investing-is',    title: 'What Intelligent Investing Is',                   keyword: 'what is intelligent investing',                   page_type: 'pillar',  development_stage: 'Awakening',  content_category: '04 Identity' },
+  { slug: 'how-intelligent-investing-works',  title: 'How Intelligent Investing Works',                 keyword: 'how intelligent investing works',                 page_type: 'pillar',  development_stage: 'Commitment', content_category: '03 Capital Discipline' },
+  { slug: 'pricing-one-app-one-fee',          title: 'Pricing: One App. One Fee.',                      keyword: 'intelligent investing pricing Canada',            page_type: 'landing', development_stage: 'Commitment', content_category: '04 Identity' },
+  { slug: 'regulatory-protection-ciro-cipf',  title: 'Regulatory Protection: CIRO, CIPF, and Custody', keyword: 'is intelligent investing safe Canada CIRO',        page_type: 'landing', development_stage: 'Commitment', content_category: '03 Capital Discipline' },
+  { slug: 'managed-portfolios',               title: 'Managed Portfolios: S&P 500 DCA',                 keyword: 'managed investing portfolio Canada S&P 500',      page_type: 'landing', development_stage: 'Commitment', content_category: '03 Capital Discipline' },
+  { slug: 'self-directed-investing',          title: 'Self-Directed Investing With a System',           keyword: 'self-directed investing Canada with a system',    page_type: 'pillar',  development_stage: 'Discipline', content_category: '02 Behavioural Edge' },
+  { slug: 'fiscal-ai-stock-analysis',         title: 'Fiscal AI: AI-Powered Stock Analysis',            keyword: 'Fiscal AI stock analysis Canada',                 page_type: 'landing', development_stage: 'Discipline', content_category: '03 Capital Discipline' },
+  { slug: 'sp500-benchmark-comparison',       title: 'S&P 500 Benchmark: Know Where You Stand',         keyword: 'compare investment performance S&P 500 Canada',  page_type: 'landing', development_stage: 'Discipline', content_category: '02 Behavioural Edge' },
+  { slug: 'investment-memo-process',          title: 'The Investment Memo: Write It Before You Buy',    keyword: 'investment thesis template Canada',               page_type: 'pillar',  development_stage: 'Discipline', content_category: '03 Capital Discipline' },
+  { slug: 'what-we-do-not-do',               title: 'What We Do Not Do',                               keyword: 'what intelligent investing does not do',          page_type: 'landing', development_stage: 'Attention',  content_category: '01 System Failure' },
+]
 
 // Source: SEO/AEO — Automated Agent Flow (Confluence MO1, ID: 3417702418)
 // Canada-first ICP seeds — Confused Improver (28–42, Wealthsimple/Questrade users)
