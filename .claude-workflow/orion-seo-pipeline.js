@@ -681,6 +681,122 @@ Confirm each file written successfully.`,
 
 log(`✓ Content — ${validDrafts.length} pages written | ${validDrafts.filter(d=>d.aeo_optimised).length} AEO-optimised`)
 
+// ── Content briefs for Tarsila + Miguel ──────────────────────────────────────
+// A brief is separate from the full draft — it gives Tarsila everything she needs
+// to write, refine, or brief an external writer independently of the pipeline.
+// Miguel gets the technical spec per page so he knows exactly how to implement it.
+const BRIEFS_DIR = `${OUTPUT_DIR}\\content_briefs\\${RUN_DATE}`
+
+const briefsContent = validDrafts.map((d, i) => {
+  const item = contentQueue[i] || {}
+  const compReview = draftComplianceMap ? draftComplianceMap[d.filename] : null
+  return `
+# Content Brief — ${d.keyword}
+**File:** \`content_drafts/${RUN_DATE}/${d.filename}\`
+**Run date:** ${RUN_DATE}
+**Brief for:** Tarsila (content review + refinement) · Miguel (technical implementation)
+
+---
+
+## 1. Strategic context
+| Field | Value |
+|-------|-------|
+| Target keyword | ${d.keyword} |
+| Page type | ${d.page_type} |
+| Development stage | ${item.development_stage || '—'} |
+| Content category | ${item.content_category || '—'} |
+| Recruiting motion | ${item.source === 'aeo_gap' ? 'Reactive (person has already been humbled)' : 'Anticipatory (person recognizes vulnerability)'} |
+| AEO optimised | ${d.aeo_optimised ? 'Yes — first 40–60 words must be quotable by AI assistants' : 'No'} |
+| Priority | ${item.page_priority || (item.source === 'p0_foundation' ? 'P0 — Foundation' : item.source === 'aeo_gap' ? 'P1 — AEO gap' : 'P1/P2')} |
+| Five claims anchor | ${item.five_claims_anchor || 'See brief section 3'} |
+| Compliance status | ${compReview ? compReview.verdict : 'Pending CIRO review'} |
+
+---
+
+## 2. For Tarsila — content review checklist
+Before this page is approved for publish, confirm:
+- [ ] Reduces to at least one of the five claims
+- [ ] Voice is "most of us" — never "most investors"
+- [ ] Reinforces allocator identity ("type of allocator who operates within a system")
+- [ ] No forbidden words: elite, exclusive, premium, luxury, smart money, beat the market, alpha, outperform, expert picks
+- [ ] Passes all 6 drift checks (guru, activity, educational, pronoun, identity, status)
+- [ ] Opening 40–60 words are standalone and quotable by AI assistants${d.aeo_optimised ? ' ← critical for this page' : ''}
+- [ ] CTAs use approved language only: "Proceed deliberately." / "See the system." / "Compare decisions to the benchmark." / "Review the process."
+- [ ] CIRO compliance verdict accepted: **${compReview ? compReview.verdict : 'pending'}**
+- [ ] ${compReview && compReview.supervisor_required ? '⚠ SUPERVISOR SIGN-OFF REQUIRED before publish' : 'Supervisor sign-off: check with Axl once KUs resolved'}
+
+${compReview && compReview.risk_summary ? `**Compliance note:** ${compReview.risk_summary}` : ''}
+
+---
+
+## 3. For Miguel — technical implementation spec
+
+### URL structure
+\`\`\`
+/[slug]  →  ${d.slug}
+\`\`\`
+
+### JSON-LD schema required
+${d.page_type === 'faq' ? `**FAQPage + Article schema** (both)
+\`\`\`json
+{
+  "@context": "https://schema.org",
+  "@type": ["Article", "FAQPage"],
+  "mainEntity": [
+    { "@type": "Question", "name": "Q1", "acceptedAnswer": { "@type": "Answer", "text": "A1" } }
+  ]
+}
+\`\`\`` : d.page_type === 'pillar' || d.page_type === 'cluster_article' ? `**Article schema**
+\`\`\`json
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "${d.keyword}",
+  "author": { "@type": "Organization", "name": "Intelligent Investing" },
+  "publisher": { "@type": "Organization", "name": "Orion Digital Corp." }
+}
+\`\`\`` : `**WebPage + BreadcrumbList schema**`}
+
+### AEO implementation${d.aeo_optimised ? ' ← required for this page' : ''}
+- First paragraph (40–60 words) must render without JavaScript — no lazy loading
+- Do NOT wrap the opening paragraph in an accordion, tab, or collapsible element
+- Ensure the opening paragraph text matches the schema \`description\` field exactly
+- Submit to Google Search Console immediately after publish (see AEO Technical Setup page)
+
+### GSC submission steps
+1. Publish the page at the URL above
+2. Go to [Google Search Console](https://search.google.com/search-console) → URL Inspection
+3. Paste the full URL → Request Indexing
+4. Check back in 48–72 hours for index confirmation
+5. Update the ranking tracker with the published URL
+
+### Internal links to add
+- Link FROM: existing pillar pages covering related topics
+- Link TO: the Orion product page most relevant to this keyword
+- Anchor text: use the target keyword naturally (not "click here")
+
+### Page metadata
+| Field | Required value |
+|-------|---------------|
+| Title tag | ≤60 chars, includes keyword |
+| Meta description | 130–155 chars, includes keyword, no exclamation marks |
+| OG title | Same as title tag |
+| Canonical | Self-referencing |
+| Robots | index, follow |
+`}).join('\n\n---\n\n')
+
+await agent(
+  `Create the directory ${BRIEFS_DIR} if it doesn't exist.
+Then write this content to the file: ${BRIEFS_DIR}\\content_briefs_${RUN_DATE}.md
+
+${briefsContent}
+
+Use the Write tool. Confirm success.`,
+  { label: 'write-content-briefs', phase: 'Content' }
+)
+
+log(`✓ Content briefs written to output/content_briefs/${RUN_DATE}/`)
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // AGENT 3b — CIRO COMPLIANCE REVIEW (parallel, one agent per page)
