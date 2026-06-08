@@ -114,7 +114,9 @@
       "WebFetch(domain:trendspider.com)",
       "WebFetch(domain:valuemarkers.com)",
       "WebFetch(domain:www.alphaspread.com)",
-      "Bash(Set-Content -Path 'C:\\\\Users\\\\Paige.Rogers\\\\Desktop\\\\claude codes\\\\queue\\\\next_research_seeds.json' -Encoding utf8 -Value '{ *)"
+      "Bash(Set-Content -Path 'C:\\\\Users\\\\Paige.Rogers\\\\Desktop\\\\claude codes\\\\queue\\\\next_research_seeds.json' -Encoding utf8 -Value '{ *)",
+      "Bash(git stash *)",
+      "Bash(git commit -m 'Merge develop into master — pipeline bugfixes v3 *)"
     ]
   }
 }

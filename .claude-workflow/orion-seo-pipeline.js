@@ -313,7 +313,7 @@ const CONTENT_SCHEMA = {
     // ── Dave Feller doctrine fields ──────────────────────────────────────
     development_stage:   { type: 'string', enum: ['Attention','Awakening','Commitment','Discipline','Mastery'] },
     recruiting_motion:   { type: 'string', enum: ['reactive','anticipatory'] },
-    content_category:    { type: 'string', enum: ['Reality','Process','Judgment','Capital Allocation','Market Structure'] },
+    content_category:    { type: 'string', enum: ['01 System Failure','02 Behavioural Edge','03 Capital Discipline','04 Identity'] },
     five_claims_used:    { type: 'array', items: { type: 'string' } },
     drift_check_passed:  { type: 'boolean' },
     drift_issues_found:  { type: 'string' },
@@ -432,7 +432,7 @@ Return a JSON object: { "slug": true/false, ... }`,
 // Parse which P0 pages are missing
 let p0Missing = P0_FOUNDATION_PAGES
 try {
-  const existing = JSON.parse((p0StatusResult.match(/\{[\s\S]*\}/) || ['{}'])[0])
+  const existing = JSON.parse(((p0StatusResult || '').match(/\{[\s\S]*\}/) || ['{}'])[0])
   p0Missing = P0_FOUNDATION_PAGES.filter(p => !existing[p.slug])
 } catch(e) {
   log('P0 check parse error — will draft all 10 foundation pages')
@@ -1155,7 +1155,7 @@ GENERATE 3 ALERTS (one each):
 
 QUICK_WINS: 3 keywords realistically achievable page 1 within 60 days (low difficulty, already ranking 11–20).
 
-AEO_TREND: single entry — { date: "${RUN_DATE}", visibility_rate: ${aeoResults.orion_visibility_rate}, total_queries: 10, orion_mentioned: ${aeoResults.results.filter(r=>r.orion_mentioned).length} }`,
+AEO_TREND: single entry — { date: "${RUN_DATE}", visibility_rate: ${aeoResults.orion_visibility_rate}, total_queries: ${ICP_QUERIES.length}, orion_mentioned: ${aeoResults.results.filter(r=>r.orion_mentioned).length} }`,
   { label: 'ranking-baseline', phase: 'Ranking', schema: RANKING_SCHEMA }
 )
 
@@ -1170,7 +1170,7 @@ ${JSON.stringify({
   gsc_status:               'not_connected',
   gsc_connect_instructions: 'Set GSC_SERVICE_ACCOUNT_JSON env var with path to service account JSON key file',
   gsc_summary:              rankingReport.gsc_summary,
-  aeo_trend:                rankingReport.aeo_trend || [{ date: RUN_DATE, visibility_rate: aeoResults.orion_visibility_rate, total_queries: 10, orion_mentioned: aeoResults.results.filter(r=>r.orion_mentioned).length }],
+  aeo_trend:                rankingReport.aeo_trend || [{ date: RUN_DATE, visibility_rate: aeoResults.orion_visibility_rate, total_queries: ICP_QUERIES.length, orion_mentioned: aeoResults.results.filter(r=>r.orion_mentioned).length }],
   aeo_current_visibility:   aeoResults.orion_visibility_rate,
   alerts:                   rankingReport.alerts,
   quick_wins:               rankingReport.quick_wins || [],
@@ -1298,11 +1298,11 @@ const weeklyReportMd = [
   ``,
   ...validDrafts.map(d => `- \`${d.filename}\` — ${d.keyword} (${d.page_type}${d.aeo_optimised ? ', AEO ✓' : ''})`),
   ``,
-  `## Next research seeds (${insights.next_seeds.length} queued for Monday)`,
+  `## Next research seeds (${Object.values(insights.next_seeds).flat().length} queued for Monday)`,
   ``,
   `_Auto-queued — loads automatically on next pipeline run_`,
   ``,
-  ...insights.next_seeds.map(s => `- ${s}`),
+  ...Object.values(insights.next_seeds).flat().map(s => `- ${s}`),
   ``,
   `---`,
   `_Trigger next run: say "run the Orion pipeline" in Claude Code_`,
