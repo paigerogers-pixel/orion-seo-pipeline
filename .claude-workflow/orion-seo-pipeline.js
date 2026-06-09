@@ -114,15 +114,13 @@ The allocator is the product. The portfolio is the artifact. The system is the e
 }
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
-// FIX #2: Run date — use args.runDate if provided, otherwise ask an agent for today's date
-// Never hardcode a fallback date — that caused all outputs to stamp the wrong week
-const _dateResult = (args && args.runDate) ? args.runDate : await agent(
-  `Return today's date in YYYY-MM-DD format. Return only the date string, nothing else.`,
-  { label: 'get-run-date' }
-)
-const RUN_DATE = (typeof _dateResult === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(_dateResult.trim()))
-  ? _dateResult.trim()
-  : (args && args.runDate) || '2026-06-09'
+// v4: Inline date resolution — no agent spawn needed. args.runDate used by GitHub Actions.
+const RUN_DATE = (args && args.runDate && /^\d{4}-\d{2}-\d{2}$/.test(args.runDate))
+  ? args.runDate
+  : (() => {
+      const d = new Date()
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    })()
 const OUTPUT_DIR  = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\output'
 const QUEUE_DIR   = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\queue'
 const CONTENT_DIR = `${OUTPUT_DIR}\\content_drafts\\${RUN_DATE}`
@@ -394,7 +392,13 @@ const INSIGHT_SCHEMA = {
   required: ['wins','gaps','recommendations','next_seeds','executive_summary','edge_draft'],
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// ── v4: P0 schema for reliable parsing (no more regex) ──────────────────────
+const P0_STATUS_SCHEMA = {
+  type: 'object',
+  properties: Object.fromEntries(P0_FOUNDATION_PAGES.map(p => [p.slug, { type: 'boolean' }])),
+  required: P0_FOUNDATION_PAGES.map(p => p.slug),
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // FIX #1 — P0 GATE: Check which foundation pages exist, draft missing ones first
 // Source: SEO/AEO Agent Flow (Confluence MO1 ID: 3417702418)
@@ -402,24 +406,17 @@ const INSIGHT_SCHEMA = {
 phase('P0 Gate')
 log('⓪ P0 Gate — checking which foundation pages exist...')
 
-const p0StatusResult = await agent(
+const p0Status = await agent(
   `Check which of these P0 foundation pages already exist as files in the directory ${OUTPUT_DIR}\\content_drafts\\ (any subdirectory).
 Use the Glob tool to search for these slugs:
 ${P0_FOUNDATION_PAGES.map(p => `- ${p.slug}.md`).join('\n')}
 
-For each slug, return whether the file exists (true/false).
-Return a JSON object: { "slug": true/false, ... }`,
-  { label: 'p0-check', phase: 'P0 Gate' }
+For each slug, return true if the file exists, false if it does not.`,
+  { label: 'p0-check', phase: 'P0 Gate', schema: P0_STATUS_SCHEMA }
 )
 
-// Parse which P0 pages are missing
-let p0Missing = P0_FOUNDATION_PAGES
-try {
-  const existing = JSON.parse(((p0StatusResult || '').match(/\{[\s\S]*\}/) || ['{}'])[0])
-  p0Missing = P0_FOUNDATION_PAGES.filter(p => !existing[p.slug])
-} catch(e) {
-  log('P0 check parse error — will draft all 10 foundation pages')
-}
+// With schema, p0Status is a validated object — no regex parsing needed
+const p0Missing = P0_FOUNDATION_PAGES.filter(p => !p0Status[p.slug])
 
 log(`P0 status: ${P0_FOUNDATION_PAGES.length - p0Missing.length}/${P0_FOUNDATION_PAGES.length} foundation pages exist | ${p0Missing.length} missing`)
 
@@ -654,13 +651,41 @@ log(`✓ Research — ${sortedKeywords.length} keywords | ${sortedKeywords.filte
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// AGENT 2 — AEO MONITOR
+// AGENT 2 — AEO MONITOR (v4: runs in parallel with research file write)
 // ══════════════════════════════════════════════════════════════════════════════
 phase('AEO Monitor')
-log('② AEO Monitor — auditing AI visibility across 10 ICP queries...')
+log('① Writing keyword brief + ② AEO Monitor — running in parallel...')
 
-const aeoResults = await agent(
-  `You are the AEO Monitor for Intelligent Investing (II) — a Canadian investing platform that makes the discipline of serious capital allocation operationally accessible to individual investors. II is a CIRO member firm. The product: managed S&P 500 DCA portfolio + self-directed investing with structured process tools (investment memos, kill lines, S&P benchmarking, Fiscal AI analysis).
+const [, aeoResults] = await parallel([
+
+  // Write keyword brief to disk — in parallel with AEO audit (AEO doesn't need the file)
+  () => agent(
+    `Create these directories if they don't exist: ${OUTPUT_DIR}, ${QUEUE_DIR}, ${CONTENT_DIR}
+Then write this exact content to: ${OUTPUT_DIR}\\keyword_brief_${RUN_DATE}.json
+
+\`\`\`json
+${JSON.stringify({
+  generated_at:     `${RUN_DATE}T07:00:00`,
+  run_date:         RUN_DATE,
+  agent:            'orion-research-agent-v2',
+  seeds_used:       seeds.slice(0,20),
+  total_keywords:   sortedKeywords.length,
+  aeo_candidates:   sortedKeywords.filter(k => k.aeo_flag).length,
+  quick_wins:       sortedKeywords.filter(k => (k.difficulty||100) < 35 && k.score >= 70).map(k => k.keyword),
+  top_priorities:   sortedKeywords.slice(0, 50),
+  community_phrases: keywordBrief.community_phrases,
+  research_notes:   keywordBrief.research_notes || '',
+  all_keywords:     sortedKeywords,
+}, null, 2)}
+\`\`\`
+
+Use the Write tool. Confirm success.`,
+    { label: 'write-keyword-brief', phase: 'Research' }
+  ),
+
+  // AEO Monitor audit — runs concurrently with the keyword brief file write
+  () => agent(
+    `You are the AEO Monitor for Intelligent Investing (II) — a Canadian investing platform that makes the discipline of serious capital allocation operationally accessible to individual investors. II is a CIRO member firm. The product: managed S&P 500 DCA portfolio + self-directed investing with structured process tools (investment memos, kill lines, S&P benchmarking, Fiscal AI analysis).
 
 Source: SEO/AEO — Automated Agent Flow (Confluence MO1, ID: 3417702418)
 
@@ -692,48 +717,19 @@ ALSO PRODUCE:
 - competitor_frequency: { "CompetitorName": count } across all 15 responses
 - highest_priority_gaps: top 5 queries to target first (Confused Improver intent × II product fit)
 - strategic_summary: 2–3 sentences on the AEO landscape and II's fastest path to visibility in Canadian AI responses`,
-  { label: 'aeo-audit', phase: 'AEO Monitor', schema: AEO_SCHEMA }
-)
+    { label: 'aeo-audit', phase: 'AEO Monitor', schema: AEO_SCHEMA }
+  ),
 
-await agent(
-  `Write this exact content to: ${OUTPUT_DIR}\\aeo_monitor_${RUN_DATE}.json
-
-\`\`\`json
-${JSON.stringify({
-  generated_at:          `${RUN_DATE}T07:20:00`,
-  run_date:              RUN_DATE,
-  agent:                 'orion-aeo-monitor-v2',
-  total_queries:         ICP_QUERIES.length,
-  orion_mentioned_count: aeoResults.results.filter(r => r.orion_mentioned).length,
-  orion_visibility_rate: aeoResults.orion_visibility_rate,
-  gap_queries:           aeoResults.results.filter(r => r.orion_gap).map(r => r.query),
-  competitor_frequency:  aeoResults.competitor_frequency || {},
-  top_competitors:       aeoResults.top_competitors,
-  content_opportunities: aeoResults.results.filter(r => r.orion_gap).map(r => ({
-    query:                   r.query,
-    suggested_title:         r.suggested_title,
-    competitors_to_displace: r.competitors_cited || [],
-    content_opportunity:     r.content_opportunity,
-    priority:                r.priority,
-  })),
-  highest_priority_gaps: aeoResults.highest_priority_gaps,
-  strategic_summary:     aeoResults.strategic_summary || '',
-  results:               aeoResults.results,
-}, null, 2)}
-\`\`\`
-
-Use the Write tool. Confirm success.`,
-  { label: 'write-aeo', phase: 'AEO Monitor' }
-)
+])
 
 log(`✓ AEO Monitor — visibility: ${aeoResults.orion_visibility_rate}% | ${aeoResults.results.filter(r=>r.orion_gap&&r.priority==='high').length} high-priority gaps | Top competitor: ${aeoResults.top_competitors[0]||'n/a'}`)
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// AGENT 3 — CONTENT (10 pages, parallel)
+// AGENT 3 — CONTENT (v4: AEO file write runs in parallel with content agents)
 // ══════════════════════════════════════════════════════════════════════════════
 phase('Content')
-log('③ Content Agent — building queue and drafting 10 pages in parallel...')
+log('② Writing AEO monitor + ③ Content Agent — running in parallel...')
 
 // AEO gap pages first, then top keyword brief items
 const aeoQueue = aeoResults.results
@@ -797,7 +793,43 @@ const PAGE_INSTRUCTIONS = {
   landing: `LANDING PAGE (700–900 words): Lead with investor pain point (not Orion's features). Build to Orion as the solution. 2-3 CTAs. Social proof framing.`,
 }
 
-const contentDrafts = await parallel(contentQueue.map((item, idx) => () =>
+// v4: AEO file write runs in parallel with the 10 content draft agents
+const [, ...contentDraftsRaw] = await parallel([
+
+  // Write AEO monitor results to disk — runs while content agents are drafting
+  () => agent(
+    `Write this exact content to: ${OUTPUT_DIR}\\aeo_monitor_${RUN_DATE}.json
+
+\`\`\`json
+${JSON.stringify({
+  generated_at:          `${RUN_DATE}T07:20:00`,
+  run_date:              RUN_DATE,
+  agent:                 'orion-aeo-monitor-v2',
+  total_queries:         ICP_QUERIES.length,
+  orion_mentioned_count: aeoResults.results.filter(r => r.orion_mentioned).length,
+  orion_visibility_rate: aeoResults.orion_visibility_rate,
+  gap_queries:           aeoResults.results.filter(r => r.orion_gap).map(r => r.query),
+  competitor_frequency:  aeoResults.competitor_frequency || {},
+  top_competitors:       aeoResults.top_competitors,
+  content_opportunities: aeoResults.results.filter(r => r.orion_gap).map(r => ({
+    query:                   r.query,
+    suggested_title:         r.suggested_title,
+    competitors_to_displace: r.competitors_cited || [],
+    content_opportunity:     r.content_opportunity,
+    priority:                r.priority,
+  })),
+  highest_priority_gaps: aeoResults.highest_priority_gaps,
+  strategic_summary:     aeoResults.strategic_summary || '',
+  results:               aeoResults.results,
+}, null, 2)}
+\`\`\`
+
+Use the Write tool. Confirm success.`,
+    { label: 'write-aeo', phase: 'AEO Monitor' }
+  ),
+
+  // 10 content draft agents — run concurrently with AEO file write
+  ...contentQueue.map((item, idx) => () =>
   agent(
     `You are the Content Agent for Intelligent Investing / Orion Digital Corp. You produce content that serves allocator development — not generic SEO content.
 
@@ -928,145 +960,33 @@ Return ONLY the structured output. No preamble.`,
       phase: 'Content',
       schema: CONTENT_SCHEMA,
     }
+  ))
+])
+
+// Index 0 was write-aeo (ignored via destructuring), rest are content drafts
+const contentDrafts = contentDraftsRaw
+const validDrafts = contentDrafts.filter(Boolean)
+log(`${validDrafts.length}/10 drafted — writing files in parallel...`)
+
+// v4: Write each file in its own parallel agent — faster and isolated vs one giant prompt
+await parallel(validDrafts.map(d => () =>
+  agent(
+    `Write this markdown file using the Write tool.
+
+PATH: ${CONTENT_DIR}\\${d.filename}
+
+${d.content}
+
+Confirm success.`,
+    { label: `write-draft-${d.slug.slice(0,30)}`, phase: 'Content' }
   )
 ))
-
-const validDrafts = contentDrafts.filter(Boolean)
-log(`${validDrafts.length}/10 drafted — writing files...`)
-
-await agent(
-  `Write each of these ${validDrafts.length} markdown files. Use the Write tool for each one.
-
-${validDrafts.map(d => `
-PATH: ${CONTENT_DIR}\\${d.filename}
----BEGIN CONTENT---
-${d.content}
----END CONTENT---
-`).join('\n')}
-
-Confirm each file written successfully.`,
-  { label: 'write-content', phase: 'Content' }
-)
 
 const driftFailed = validDrafts.filter(d => d.drift_check_passed === false)
 const doctrineAligned = validDrafts.filter(d => d.drift_check_passed === true)
 log(`✓ Content — ${validDrafts.length} pages written | ${doctrineAligned.length} doctrine-aligned | ${driftFailed.length} drift issues flagged | ${validDrafts.filter(d=>d.aeo_optimised).length} AEO-optimised`)
+// Note: content briefs are written after compliance so they include CIRO verdicts
 
-// ── Content briefs for Tarsila + Miguel ──────────────────────────────────────
-// A brief is separate from the full draft — it gives Tarsila everything she needs
-// to write, refine, or brief an external writer independently of the pipeline.
-// Miguel gets the technical spec per page so he knows exactly how to implement it.
-const BRIEFS_DIR = `${OUTPUT_DIR}\\content_briefs\\${RUN_DATE}`
-
-const briefsContent = validDrafts.map((d, i) => {
-  const item = contentQueue[i] || {}
-  const compReview = draftComplianceMap ? draftComplianceMap[d.filename] : null
-  return `
-# Content Brief — ${d.keyword}
-**File:** \`content_drafts/${RUN_DATE}/${d.filename}\`
-**Run date:** ${RUN_DATE}
-**Brief for:** Tarsila (content review + refinement) · Miguel (technical implementation)
-
----
-
-## 1. Strategic context
-| Field | Value |
-|-------|-------|
-| Target keyword | ${d.keyword} |
-| Page type | ${d.page_type} |
-| Development stage | ${item.development_stage || '—'} |
-| Content category | ${item.content_category || '—'} |
-| Recruiting motion | ${item.source === 'aeo_gap' ? 'Reactive (person has already been humbled)' : 'Anticipatory (person recognizes vulnerability)'} |
-| AEO optimised | ${d.aeo_optimised ? 'Yes — first 40–60 words must be quotable by AI assistants' : 'No'} |
-| Priority | ${item.page_priority || (item.source === 'p0_foundation' ? 'P0 — Foundation' : item.source === 'aeo_gap' ? 'P1 — AEO gap' : 'P1/P2')} |
-| Five claims anchor | ${item.five_claims_anchor || 'See brief section 3'} |
-| Compliance status | ${compReview ? compReview.verdict : 'Pending CIRO review'} |
-
----
-
-## 2. For Tarsila — content review checklist
-Before this page is approved for publish, confirm:
-- [ ] Reduces to at least one of the five claims
-- [ ] Voice is "most of us" — never "most investors"
-- [ ] Reinforces allocator identity ("type of allocator who operates within a system")
-- [ ] No forbidden words: elite, exclusive, premium, luxury, smart money, beat the market, alpha, outperform, expert picks
-- [ ] Passes all 6 drift checks (guru, activity, educational, pronoun, identity, status)
-- [ ] Opening 40–60 words are standalone and quotable by AI assistants${d.aeo_optimised ? ' ← critical for this page' : ''}
-- [ ] CTAs use approved language only: "Proceed deliberately." / "See the system." / "Compare decisions to the benchmark." / "Review the process."
-- [ ] CIRO compliance verdict accepted: **${compReview ? compReview.verdict : 'pending'}**
-- [ ] ${compReview && compReview.supervisor_required ? '⚠ SUPERVISOR SIGN-OFF REQUIRED before publish' : 'Supervisor sign-off: check with Axl once KUs resolved'}
-
-${compReview && compReview.risk_summary ? `**Compliance note:** ${compReview.risk_summary}` : ''}
-
----
-
-## 3. For Miguel — technical implementation spec
-
-### URL structure
-\`\`\`
-/[slug]  →  ${d.slug}
-\`\`\`
-
-### JSON-LD schema required
-${d.page_type === 'faq' ? `**FAQPage + Article schema** (both)
-\`\`\`json
-{
-  "@context": "https://schema.org",
-  "@type": ["Article", "FAQPage"],
-  "mainEntity": [
-    { "@type": "Question", "name": "Q1", "acceptedAnswer": { "@type": "Answer", "text": "A1" } }
-  ]
-}
-\`\`\`` : d.page_type === 'pillar' || d.page_type === 'cluster_article' ? `**Article schema**
-\`\`\`json
-{
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "${d.keyword}",
-  "author": { "@type": "Organization", "name": "Intelligent Investing" },
-  "publisher": { "@type": "Organization", "name": "Orion Digital Corp." }
-}
-\`\`\`` : `**WebPage + BreadcrumbList schema**`}
-
-### AEO implementation${d.aeo_optimised ? ' ← required for this page' : ''}
-- First paragraph (40–60 words) must render without JavaScript — no lazy loading
-- Do NOT wrap the opening paragraph in an accordion, tab, or collapsible element
-- Ensure the opening paragraph text matches the schema \`description\` field exactly
-- Submit to Google Search Console immediately after publish (see AEO Technical Setup page)
-
-### GSC submission steps
-1. Publish the page at the URL above
-2. Go to [Google Search Console](https://search.google.com/search-console) → URL Inspection
-3. Paste the full URL → Request Indexing
-4. Check back in 48–72 hours for index confirmation
-5. Update the ranking tracker with the published URL
-
-### Internal links to add
-- Link FROM: existing pillar pages covering related topics
-- Link TO: the Orion product page most relevant to this keyword
-- Anchor text: use the target keyword naturally (not "click here")
-
-### Page metadata
-| Field | Required value |
-|-------|---------------|
-| Title tag | ≤60 chars, includes keyword |
-| Meta description | 130–155 chars, includes keyword, no exclamation marks |
-| OG title | Same as title tag |
-| Canonical | Self-referencing |
-| Robots | index, follow |
-`}).join('\n\n---\n\n')
-
-await agent(
-  `Create the directory ${BRIEFS_DIR} if it doesn't exist.
-Then write this content to the file: ${BRIEFS_DIR}\\content_briefs_${RUN_DATE}.md
-
-${briefsContent}
-
-Use the Write tool. Confirm success.`,
-  { label: 'write-content-briefs', phase: 'Content' }
-)
-
-log(`✓ Content briefs written to output/content_briefs/${RUN_DATE}/`)
 
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1108,20 +1028,19 @@ const verdictCounts = {
   supervisorRequired: validReviews.filter(r => r.supervisor_required).length,
 }
 
-// Write revised (compliant) versions to disk, overwriting originals
-await agent(
-  `Overwrite the following files with their compliance-revised content. Use the Write tool for each.
+// v4: Write each revised file in parallel — one agent per file (faster + isolated)
+await parallel(validReviews.map(r => () =>
+  agent(
+    `Overwrite this file with the compliance-revised content. Use the Write tool.
 
-${validReviews.map(r => `
 PATH: ${CONTENT_DIR}\\${r.filename}
----BEGIN REVISED CONTENT---
-${r.revised_content}
----END REVISED CONTENT---
-`).join('\n')}
 
-Confirm each file written.`,
-  { label: 'write-revised-content', phase: 'Compliance Review' }
-)
+${r.revised_content}
+
+Confirm success.`,
+    { label: `write-revised-${r.filename.slice(0,30)}`, phase: 'Compliance Review' }
+  )
+))
 
 // Write compliance report JSON
 const complianceReportJson = JSON.stringify({
@@ -1155,9 +1074,67 @@ Use the Write tool. Confirm success.`,
 
 log(`✓ Compliance Review — ${verdictCounts.compliant} likely compliant | ${verdictCounts.needsRevision} need revision | ${verdictCounts.highRisk} high risk | ${verdictCounts.supervisorRequired} require Supervisor approval`)
 
-// Attach compliance data to validDrafts for use in Jira tickets
+// Attach compliance data to validDrafts for use in Jira tickets and briefs
 const draftComplianceMap = {}
 for (const r of validReviews) { draftComplianceMap[r.filename] = r }
+
+// v4: Write compliance report + content briefs in parallel (both need draftComplianceMap)
+const BRIEFS_DIR = `${OUTPUT_DIR}\\content_briefs\\${RUN_DATE}`
+const briefsContent = validDrafts.map((d, i) => {
+  const item = contentQueue[i] || {}
+  const cr = draftComplianceMap[d.filename] || {}
+  return `# Content Brief — ${d.keyword}
+**File:** \`content_drafts/${RUN_DATE}/${d.filename}\`
+**Run date:** ${RUN_DATE}
+**Brief for:** Tarsila (content review + refinement) · Miguel (technical implementation)
+
+---
+
+## 1. Strategic context
+| Field | Value |
+|-------|-------|
+| Target keyword | ${d.keyword} |
+| Page type | ${d.page_type} |
+| Development stage | ${item.development_stage || '—'} |
+| Content category | ${item.content_category || '—'} |
+| Recruiting motion | ${item.source === 'aeo_gap' ? 'Reactive (person has already been humbled)' : 'Anticipatory (person recognizes vulnerability)'} |
+| AEO optimised | ${d.aeo_optimised ? 'Yes — first 40–60 words must be quotable by AI assistants' : 'No'} |
+| Priority | ${item.page_priority || (item.source === 'p0_foundation' ? 'P0 — Foundation' : item.source === 'aeo_gap' ? 'P1 — AEO gap' : 'P1/P2')} |
+| Compliance | ${cr.verdict || 'Pending'} |
+
+## 2. For Tarsila — review checklist
+- [ ] Reduces to at least one of the five claims
+- [ ] "Most of us" — never "most investors"
+- [ ] Reinforces allocator identity
+- [ ] No forbidden words (elite, exclusive, beat the market, alpha, outperform)
+- [ ] Passes all 6 drift checks
+- [ ] Opening 40–60 words standalone and quotable${d.aeo_optimised ? ' ← critical' : ''}
+- [ ] CTAs approved only: "Proceed deliberately." / "See the system." / "Compare decisions to the benchmark."
+- [ ] CIRO verdict accepted: **${cr.verdict || 'pending'}**
+- [ ] ${cr.supervisor_required ? '⚠ SUPERVISOR SIGN-OFF REQUIRED before publish' : 'Standard hold — awaiting KU resolution'}
+${cr.risk_summary ? `\n**Compliance note:** ${cr.risk_summary}` : ''}
+
+## 3. For Miguel — technical spec
+**URL slug:** \`/${d.slug}\`
+**Schema:** ${d.page_type === 'faq' ? 'Article + FAQPage' : d.page_type === 'pillar' || d.page_type === 'cluster_article' ? 'Article' : 'WebPage + BreadcrumbList'}
+**AEO:** ${d.aeo_optimised ? '⚠ First paragraph must render server-side, plain <p> tag, no JS wrappers' : 'Standard'}
+**GSC:** Submit within 24h of publish → screenshot → comment on Jira ticket
+**Internal links:** Min 2 outbound + 1 inbound from existing page`
+}).join('\n\n---\n\n')
+
+await parallel([
+  () => agent(
+    `Write this JSON to: ${OUTPUT_DIR}\\compliance_report_${RUN_DATE}.json\n\n${complianceReportJson}\n\nUse the Write tool. Confirm success.`,
+    { label: 'write-compliance-report', phase: 'Compliance Review' }
+  ),
+  () => agent(
+    `Create directory ${BRIEFS_DIR} if needed. Write this content to: ${BRIEFS_DIR}\\content_briefs_${RUN_DATE}.md\n\n${briefsContent}\n\nUse Write tool. Confirm success.`,
+    { label: 'write-content-briefs', phase: 'Compliance Review' }
+  ),
+])
+
+log(`✓ Compliance Review — ${verdictCounts.compliant} likely compliant | ${verdictCounts.needsRevision} need revision | ${verdictCounts.highRisk} high risk | ${verdictCounts.supervisorRequired} require Supervisor approval`)
+log(`✓ Content briefs written with compliance verdicts`)
 
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1197,11 +1174,11 @@ AEO_TREND: single entry — { date: "${RUN_DATE}", visibility_rate: ${aeoResults
   { label: 'ranking-baseline', phase: 'Ranking', schema: RANKING_SCHEMA }
 )
 
-await agent(
-  `Write this exact content to: ${OUTPUT_DIR}\\ranking_report_${RUN_DATE}.json
+// v4: Write ranking report in parallel with insight agent (insight only needs rankingReport in memory)
+phase('Insight')
+log('④ Writing ranking report + ⑤ Insight — running in parallel...')
 
-\`\`\`json
-${JSON.stringify({
+const rankingReportJson = JSON.stringify({
   generated_at:             `${RUN_DATE}T07:35:00`,
   run_date:                 RUN_DATE,
   agent:                    'orion-ranking-agent-v2',
@@ -1212,23 +1189,20 @@ ${JSON.stringify({
   aeo_current_visibility:   aeoResults.orion_visibility_rate,
   alerts:                   rankingReport.alerts,
   quick_wins:               rankingReport.quick_wins || [],
-}, null, 2)}
-\`\`\`
-
-Use the Write tool. Confirm success.`,
-  { label: 'write-ranking', phase: 'Ranking' }
-)
+}, null, 2)
 
 log(`✓ Ranking — ${rankingReport.gsc_summary.keywords_tracked} keywords | ${rankingReport.alerts.length} alerts | ${(rankingReport.quick_wins||[]).length} quick wins`)
 
+const [, insights] = await parallel([
 
-// ══════════════════════════════════════════════════════════════════════════════
-// AGENT 5 — INSIGHT
-// ══════════════════════════════════════════════════════════════════════════════
-phase('Insight')
-log('⑤ Insight Agent — synthesising all outputs...')
+  // Write ranking report to disk
+  () => agent(
+    `Write this exact content to: ${OUTPUT_DIR}\\ranking_report_${RUN_DATE}.json\n\n\`\`\`json\n${rankingReportJson}\`\`\`\n\nUse the Write tool. Confirm success.`,
+    { label: 'write-ranking', phase: 'Ranking' }
+  ),
 
-const insights = await agent(
+  // Insight agent — runs concurrently with ranking file write
+  () => agent(
   `You are the SEO/AEO strategy lead for Orion. Synthesise this week's full pipeline data into an actionable strategic report.
 
 ═══ RESEARCH ═══
@@ -1281,8 +1255,10 @@ PRODUCE (be specific — use real keyword names and numbers from the data):
    - Content category: one of the 4 (01 System Failure / 02 Behavioural Edge / 03 Capital Discipline / 04 Identity)
    - compliance_flag: note any areas that may need Axl's review before send (KU-1 through KU-8)
    Base the edition on the most important insight from this week's pipeline data.`,
-  { label: 'insight-synthesis', phase: 'Insight', schema: INSIGHT_SCHEMA }
-)
+    { label: 'insight-synthesis', phase: 'Insight', schema: INSIGHT_SCHEMA }
+  ),
+
+])
 
 const weeklyReportMd = [
   `# Orion SEO/AEO Weekly Report — ${RUN_DATE}`,
@@ -1472,13 +1448,10 @@ ${aeoResults.highest_priority_gaps.map(q=>`   - "${q}"`).join('\n')}`,
     { label: 'update-confluence', phase: 'Jira + Confluence' }
   ),
 
-])
-
-// FIX #4: Write pipeline findings to Social Media performance state page
-// Source: Social Media Agent Flow (Confluence MO1 ID: 3417407509)
-// The social agents read from this machine-readable state to inform content concepts
-await agent(
-  `Update the Confluence page ID ${SOC_PERFORMANCE_PAGE_ID} on cloud ${CLOUD_ID} using the updateConfluencePage tool.
+  // v4: Social state update — now in the same parallel block as Jira + Confluence
+  // Source: Social Media Agent Flow (Confluence MO1 ID: 3417407509)
+  () => agent(
+    `Update the Confluence page ID ${SOC_PERFORMANCE_PAGE_ID} on cloud ${CLOUD_ID} using the updateConfluencePage tool.
 Title: "SOC — Performance Summary"
 contentFormat: "html"
 versionMessage: "Pipeline auto-update — ${RUN_DATE}"
@@ -1504,15 +1477,13 @@ Replace the entire body with this machine-readable state (social agents read thi
 <p><strong>02 Behavioural Edge:</strong> ${(insights.next_seeds.behavioural_edge||[]).slice(0,3).join(' · ')}</p>
 <p><strong>03 Capital Discipline:</strong> ${(insights.next_seeds.capital_discipline||[]).slice(0,3).join(' · ')}</p>
 <p><strong>04 Identity:</strong> ${(insights.next_seeds.identity||[]).slice(0,3).join(' · ')}</p>`,
-  { label: 'update-social-state', phase: 'Jira + Confluence' }
-)
+    { label: 'update-social-state', phase: 'Jira + Confluence' }
+  ),
 
-// FIX #3: Write The Edge draft to a dated section on the newsletter page
-// Tarsila reviews before send. Must not be published without Axl + Saad sign-off.
-const edgeDraft = insights.edge_draft
-await agent(
-  `On Confluence page ID ${EDGE_NEWSLETTER_PAGE_ID} (cloud ${CLOUD_ID}), add a child note or comment using createConfluenceFooterComment with the following content.
-Actually — use createConfluencePage to create a NEW child page under parent ${EDGE_NEWSLETTER_PAGE_ID}.
+  // v4: Edge draft — now in the same parallel block
+  // Tarsila reviews before send. Must not be published without Axl + Saad sign-off.
+  () => agent(
+    `On Confluence page ID ${EDGE_NEWSLETTER_PAGE_ID} (cloud ${CLOUD_ID}), use createConfluencePage to create a NEW child page under parent ${EDGE_NEWSLETTER_PAGE_ID}.
 
 Title: "Draft Edition — ${RUN_DATE}"
 cloudId: ${CLOUD_ID}
@@ -1521,27 +1492,29 @@ parentId: ${EDGE_NEWSLETTER_PAGE_ID}
 contentFormat: html
 
 Body:
-<div data-type="panel-warning"><p>DRAFT — requires Axl + Saad sign-off before send. ${edgeDraft.compliance_flag ? `Compliance flag: ${edgeDraft.compliance_flag}` : 'No specific compliance flags noted — standard KU holds apply.'}</p></div>
+<div data-type="panel-warning"><p>DRAFT — requires Axl + Saad sign-off before send. ${insights.edge_draft.compliance_flag ? `Compliance flag: ${insights.edge_draft.compliance_flag}` : 'No specific compliance flags noted — standard KU holds apply.'}</p></div>
 <table>
 <thead><tr><th>Field</th><th>Content</th></tr></thead>
 <tbody>
-<tr><td><strong>Subject line</strong></td><td>${edgeDraft.subject_line}</td></tr>
-<tr><td><strong>Preview text</strong></td><td>${edgeDraft.preview_text || '—'}</td></tr>
-<tr><td><strong>Content category</strong></td><td>${edgeDraft.content_category}</td></tr>
-<tr><td><strong>Five claims anchor</strong></td><td>${edgeDraft.five_claims_anchor || '—'}</td></tr>
+<tr><td><strong>Subject line</strong></td><td>${insights.edge_draft.subject_line}</td></tr>
+<tr><td><strong>Preview text</strong></td><td>${insights.edge_draft.preview_text || '—'}</td></tr>
+<tr><td><strong>Content category</strong></td><td>${insights.edge_draft.content_category}</td></tr>
+<tr><td><strong>Five claims anchor</strong></td><td>${insights.edge_draft.five_claims_anchor || '—'}</td></tr>
 </tbody>
 </table>
 <h2>Hard claim</h2>
-<p><strong>${edgeDraft.hard_claim}</strong></p>
+<p><strong>${insights.edge_draft.hard_claim}</strong></p>
 <h2>System explanation</h2>
-<p>${edgeDraft.system_explanation}</p>
+<p>${insights.edge_draft.system_explanation}</p>
 <h2>Correction</h2>
-<p>${edgeDraft.correction}</p>
+<p>${insights.edge_draft.correction}</p>
 <h2>Closing principle</h2>
-<p><em>${edgeDraft.closing_principle}</em></p>
+<p><em>${insights.edge_draft.closing_principle}</em></p>
 <hr/><p><em>Generated by SEO/AEO pipeline ${RUN_DATE}. Review against doctrine before send: no forbidden words, "most of us" voice, reduces to one of the five claims.</em></p>`,
-  { label: 'write-edge-draft', phase: 'Jira + Confluence' }
-)
+    { label: 'write-edge-draft', phase: 'Jira + Confluence' }
+  ),
+
+])
 
 log(`✓ Jira + Confluence — ${validDrafts.length} tickets | Confluence updated | Social state written | Edge draft created`)
 log('━━━ Pipeline complete ━━━')
