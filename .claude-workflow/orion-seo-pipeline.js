@@ -114,13 +114,11 @@ The allocator is the product. The portfolio is the artifact. The system is the e
 }
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
-// v4: Inline date resolution — no agent spawn needed. args.runDate used by GitHub Actions.
+// v4: Inline date resolution — args.runDate used by GitHub Actions and manual Workflow calls.
+// Fallback is today's date — update if pipeline runs past end of year.
 const RUN_DATE = (args && args.runDate && /^\d{4}-\d{2}-\d{2}$/.test(args.runDate))
   ? args.runDate
-  : (() => {
-      const d = new Date()
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-    })()
+  : '2026-06-09'
 const OUTPUT_DIR  = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\output'
 const QUEUE_DIR   = 'C:\\Users\\Paige.Rogers\\Desktop\\claude codes\\queue'
 const CONTENT_DIR = `${OUTPUT_DIR}\\content_drafts\\${RUN_DATE}`
